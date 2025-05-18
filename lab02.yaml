@@ -1,0 +1,164 @@
+# 🛠️ Laboratorio: Creación y exploración de dashboards con datos reales en Kibana
+
+## 📋 Objetivo
+
+Crear dashboards interactivos en Kibana con datos reales almacenados previamente en Elasticsearch, utilizando una VM en Azure creada previamente.
+
+---
+
+## 📝 Requisitos previos
+
+* Haber completado el [Laboratorio Día 1](#) (Elasticsearch en Azure).
+* VM con Elasticsearch instalado (Ubuntu 22.04).
+* Acceso SSH y al Azure Portal.
+
+---
+
+## ⚙️ Paso 1: Instalación de Kibana en Azure VM
+
+**Conéctate vía SSH a tu VM Azure:**
+
+```bash
+ssh usuario@<ip-publica-vm>
+```
+
+**Actualiza repositorios e instala Kibana:**
+
+```bash
+sudo apt update
+sudo apt install kibana -y
+```
+
+---
+
+## ⚙️ Paso 2: Configuración básica de Kibana
+
+Edita el archivo de configuración Kibana:
+
+```bash
+sudo nano /etc/kibana/kibana.yml
+```
+
+Agrega o modifica la siguiente línea para conectar Kibana con Elasticsearch:
+
+```yaml
+elasticsearch.hosts: ["http://localhost:9200"]
+server.host: "0.0.0.0"
+```
+
+Guarda el archivo (`Ctrl+X`, `Y`, `Enter`).
+
+**Inicia y habilita Kibana:**
+
+```bash
+sudo systemctl enable kibana
+sudo systemctl start kibana
+sudo systemctl status kibana
+```
+
+---
+
+## ⚙️ Paso 3: Permitir acceso externo a Kibana desde Azure
+
+* En Azure Portal, accede a tu VM → Networking.
+* Agrega una regla entrante para permitir acceso al puerto TCP `5601`.
+
+**Verifica en navegador:**
+
+```
+http://<ip-publica-vm>:5601
+```
+
+---
+
+## ⚙️ Paso 4: Crear índice en Kibana
+
+* Accede a Kibana desde tu navegador.
+* Ve a **Stack Management → Data → Index Patterns**.
+* Click en **Create Index Pattern**.
+* Escribe el nombre del índice creado el día anterior (ej. `mi_indice`) y haz clic en **Next Step**.
+* Selecciona el campo de tiempo si aplica, o **skip** si no lo tienes.
+* Finaliza con **Create Index Pattern**.
+
+---
+
+## ⚙️ Paso 5: Crear visualizaciones básicas
+
+Ve a **Analytics → Dashboard → Create new**.
+
+* Click **Create Visualization**.
+* Selecciona **Bar Chart**:
+
+  * Configura en eje X el campo deseado (ej.: `status`) y Y para contar documentos.
+* Añade visualización.
+
+Repite con otras visualizaciones:
+
+* **Pie Chart**: proporción de documentos por campo (ej. `empresa`).
+* **Line Chart**: tendencias en cantidad de documentos en el tiempo.
+* Guarda cada visualización individualmente.
+
+---
+
+## ⚙️ Paso 6: Creación de un Dashboard
+
+* En **Dashboard**, haz click en **Add from library**.
+* Selecciona visualizaciones creadas anteriormente.
+* Organiza visualizaciones en el dashboard usando drag & drop.
+* Guarda dashboard con nombre relevante (ej. `Dashboard_Curso`).
+
+---
+
+## ⚙️ Paso 7: Uso básico de Kibana Query Language (KQL)
+
+Desde tu dashboard:
+
+* Usa la barra superior para filtrar usando consultas básicas KQL:
+
+Ejemplos:
+
+* Filtrar por un valor específico:
+
+```kql
+empresa: "Kyndryl"
+```
+
+* Rango numérico:
+
+```kql
+bytes > 1000
+```
+
+* Combinar condiciones:
+
+```kql
+status: "200" AND bytes > 500
+```
+
+Observa cómo cambian las visualizaciones dinámicamente.
+
+---
+
+## ⚙️ Paso 8: Compartir y exportar Dashboards
+
+* Guarda los dashboards creados.
+* Explora opciones para compartir dashboard (exportar PDF, generar enlaces).
+
+---
+
+## 🚮 Limpieza (Opcional)
+
+Si ya no usarás estos recursos, elimina desde Azure Portal:
+
+* Ve a tu grupo de recursos y elimina recursos para evitar costos innecesarios.
+
+---
+
+## 📌 Recomendaciones finales
+
+* Documenta y guarda evidencia de visualizaciones creadas.
+* Comparte cualquier duda o consulta durante la sesión.
+
+---
+
+¡Excelente trabajo! 🚀 Ahora has creado dashboards interactivos en Kibana conectados a Elasticsearch, fortaleciendo tus habilidades en análisis y visualización de datos.
