@@ -1,0 +1,131 @@
+🛠️ Laboratorio: Configuración y análisis práctico de métricas de infraestructura en Azure Monitor y Log Analytics
+📋 Objetivo
+Configurar un entorno de monitoreo centralizado en Azure usando Azure Monitor y Log Analytics, asociar una VM para recolectar métricas y logs, crear alertas y construir dashboards personalizados para la infraestructura.
+
+📝 Prerrequisitos
+Acceso al Azure Portal
+
+Permiso para crear y asociar recursos (VM, Log Analytics Workspace, alertas)
+
+Al menos una máquina virtual en Azure (Ubuntu o Windows)
+
+Subscripción activa (puede ser trial o credits académicos)
+
+⚙️ Paso 1: Crear Log Analytics Workspace
+Entra al Azure Portal.
+
+Busca Log Analytics Workspaces > Create.
+
+Completa:
+
+Resource Group: Usa el asignado a tu usuario (ej. USER01-RG)
+
+Name: user01-laworkspace (cambia según tu usuario)
+
+Region: Selecciona la más cercana
+
+Click en Review + create y luego Create.
+
+⚙️ Paso 2: Asociar una VM al Log Analytics Workspace
+Ve a tu máquina virtual en el portal.
+
+En el menú izquierdo, selecciona Monitoring > Insights.
+
+Haz clic en Enable para conectar la VM a Azure Monitor y Log Analytics.
+
+Selecciona el workspace creado (user01-laworkspace).
+
+Confirma y espera unos minutos a que los datos empiecen a fluir.
+
+⚙️ Paso 3: Configurar diagnóstico y recopilación de métricas avanzadas
+En la VM, navega a Diagnostic settings (en Monitoring).
+
+Haz clic en + Add diagnostic setting.
+
+Selecciona:
+
+Enviar a Log Analytics workspace: elige el workspace recién creado.
+
+Habilita Performance counters, Logs y Metrics.
+
+Guarda los cambios.
+
+⚙️ Paso 4: Analizar métricas en tiempo real
+A) Con Metrics Explorer
+Entra a Azure Monitor > Metrics.
+
+Elige el recurso (VM) y métrica a analizar (ej. CPU Percentage, Disk Read Bytes/sec).
+
+Agrega filtros (por tiempo, instancia, etc.).
+
+Visualiza gráficos y exporta si es necesario.
+
+B) Con Log Analytics (Kusto Query Language - KQL)
+Ve a Log Analytics Workspaces > selecciona tu workspace > Logs.
+
+Ejemplo de consulta para eventos:
+
+kql
+Copy
+Edit
+Event
+| where TimeGenerated > ago(1h)
+| summarize count() by Level
+Consulta de métricas de rendimiento:
+
+kql
+Copy
+Edit
+Perf
+| where ObjectName == "Processor"
+| summarize avg(CounterValue) by bin(TimeGenerated, 5m), Computer
+| render timechart
+Consulta para ver logs de eventos críticos:
+
+kql
+Copy
+Edit
+Event
+| where Level == "Error"
+| project TimeGenerated, Computer, EventID, RenderedDescription
+⚙️ Paso 5: Crear una alerta basada en métricas
+Ve a Azure Monitor > Alerts > + New alert rule.
+
+Selecciona la VM como recurso.
+
+Elige condición, por ejemplo:
+
+Signal: CPU Percentage
+
+Condition: Greater than 80%
+
+Aggregation: Average, over 5 minutes
+
+Crea un Action Group para enviar notificaciones (puedes usar tu correo electrónico).
+
+Nombra y crea la alerta.
+
+Prueba generando carga en la VM para disparar la alerta.
+
+⚙️ Paso 6: Construir un dashboard personalizado
+En el portal, selecciona Dashboard > New dashboard.
+
+Agrega tiles de métricas (CPU, RAM, Disco, Red) usando “Metrics chart”.
+
+Agrega un tile de logs con consultas KQL relevantes.
+
+Personaliza colores, tamaño y disposición de widgets.
+
+Guarda y comparte el dashboard si es necesario.
+
+🚮 Limpieza (opcional)
+Si terminaste, puedes deshabilitar la VM o eliminar los recursos creados para evitar costos.
+
+📌 Notas y buenas prácticas
+Usa workspaces compartidos solo para entornos de prueba; en producción, segmenta por función/región.
+
+Revisa alertas periódicamente para evitar exceso de ruido (falsos positivos).
+
+Aprovecha Workbooks para análisis más avanzados y presentaciones interactivas.
+
+¡Laboratorio listo! 🚀 Ahora tienes visibilidad avanzada de tu infraestructura Azure con Azure Monitor y Log Analytics, y puedes extenderlo a aplicaciones, bases de datos y contenedores.
