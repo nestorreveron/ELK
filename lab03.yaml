@@ -1,0 +1,169 @@
+# 🛠️ Laboratorio: Despliegue de una Aplicación Demo Generadora de Logs usando FluentBit y Kibana
+
+## 📋 Objetivo
+
+Desplegar una aplicación de demostración que genere logs automáticamente, recolectarlos con FluentBit, 
+enviarlos a Elasticsearch y visualizar los logs en tiempo real usando Kibana.
+
+---
+
+## 📝 Requisitos previos
+
+* Haber completado laboratorios anteriores (Día 1 y Día 2).
+* Azure VM configurada con Elasticsearch y Kibana.
+* Acceso SSH a Azure VM y acceso al Azure Portal.
+
+---
+
+## ⚙️ Paso 1: Conexión a tu Azure VM
+
+Conéctate vía SSH a tu máquina virtual:
+
+```bash
+ssh usuario@<ip-publica-vm>
+```
+
+---
+
+## ⚙️ Paso 2: Instalación FluentBit
+
+Ejecuta los siguientes comandos en tu VM:
+
+```bash
+curl https://raw.githubusercontent.com/fluent/fluent-bit/master/install.sh | sh
+```
+
+Verifica la instalación:
+
+```bash
+fluent-bit --version
+```
+
+---
+
+## ⚙️ Paso 3: Crear Aplicación Demo para Generar Logs
+
+Crea y configura el archivo log:
+
+```bash
+sudo touch /var/log/demo.log
+sudo chmod 666 /var/log/demo.log
+```
+
+Genera logs automáticamente cada 5 segundos:
+
+```bash
+nohup bash -c 'while true; do echo "$(date) - Log demo generando valor $(shuf -i 1-100 -n 1)" >> /var/log/demo.log; sleep 5; done &' &
+```
+
+Verifica generación de logs:
+
+```bash
+tail -f /var/log/demo.log
+```
+
+---
+
+## ⚙️ Paso 4: Configuración FluentBit
+
+Edita el archivo de configuración:
+
+```bash
+sudo nano /etc/fluent-bit/fluent-bit.conf
+```
+
+Agrega la siguiente configuración básica:
+
+```ini
+[INPUT]
+  Name tail
+  Path /var/log/demo.log
+  Tag demo_logs
+
+[OUTPUT]
+  Name  es
+  Match demo_logs
+  Host  localhost
+  Port  9200
+  Index fluentbit-demo
+```
+
+Guarda (`Ctrl+X`, `Y`, `Enter`).
+
+---
+
+## ⚙️ Paso 5: Iniciar FluentBit
+
+Inicia FluentBit con tu archivo de configuración:
+
+```bash
+sudo fluent-bit -c /etc/fluent-bit/fluent-bit.conf
+```
+
+---
+
+## ⚙️ Paso 6: Verificación en Elasticsearch
+
+Confirma que FluentBit envía correctamente logs a Elasticsearch:
+
+```bash
+curl -X GET "localhost:9200/fluentbit-demo/_search?pretty"
+```
+
+Deberías ver los documentos JSON generados por tu aplicación demo.
+
+---
+
+## ⚙️ Paso 7: Visualización en Kibana
+
+Accede a Kibana desde tu navegador:
+
+```
+http://<ip-publica-vm>:5601
+```
+
+* Dirígete a **Stack Management → Index Patterns**.
+* Crea un nuevo índice llamado `fluentbit-demo`.
+* Explora documentos indexados en **Discover**.
+
+---
+
+## ⚙️ Paso 8: Creación de Dashboard en Kibana
+
+* Ve a **Analytics → Dashboard → Create New**.
+* Añade visualizaciones:
+
+  * **Bar Chart:** distribución por mensajes de log.
+  * **Pie Chart:** proporción de valores generados.
+  * **Line Chart:** logs generados en el tiempo.
+
+Guarda tu dashboard con nombre relevante (`Dashboard-FluentBit-Demo`).
+
+---
+
+## 🚮 Limpieza (Opcional)
+
+Para detener la generación automática de logs:
+
+```bash
+pkill -f "while true; do echo"
+```
+
+Para detener FluentBit:
+
+```bash
+sudo pkill fluent-bit
+```
+
+Elimina recursos Azure si no serán utilizados nuevamente.
+
+---
+
+## 📌 Recomendaciones finales
+
+* Guarda capturas de pantalla y registros generados durante el laboratorio.
+* Comparte preguntas o dudas con el instructor.
+
+---
+
+¡Excelente! 🚀 Ahora has configurado FluentBit y Kibana para análisis y visualización avanzada de logs generados en tiempo real.
