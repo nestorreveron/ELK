@@ -1,0 +1,146 @@
+
+# 🛠️ Laboratorio: Configuración de CloudWatch para Monitorear EC2, RDS y Lambda
+
+## 📋 Objetivo
+
+Configurar CloudWatch para monitorear instancias EC2, bases de datos RDS y funciones Lambda, crear dashboards y alarmas, y validar que los datos fluyen y se visualizan correctamente.
+
+---
+
+## 📝 Prerrequisitos
+
+* Cuenta activa en AWS (con permisos de IAM para EC2, RDS, Lambda, CloudWatch)
+* Al menos una instancia EC2, una base de datos RDS y una función Lambda disponibles
+* Acceso a la consola de AWS y a la CLI (opcional)
+
+---
+
+## ⚙️ Paso 1: Configuración de Monitoreo en EC2
+
+### **A) Habilitar monitoreo detallado en EC2**
+
+1. Ve a la consola de AWS → **EC2 → Instances**.
+2. Selecciona tu instancia.
+3. Haz clic en **Actions > Monitor and troubleshoot > Enable detailed monitoring**.
+4. Confirma la activación.
+
+Esto permite recopilar métricas cada 1 minuto (por defecto es cada 5).
+
+### **B) Verificar métricas en CloudWatch**
+
+1. Ve a **CloudWatch > Metrics > EC2 > Per-Instance Metrics**.
+2. Busca métricas clave como:
+
+   * CPUUtilization
+   * DiskReadOps
+   * NetworkIn/Out
+
+---
+
+## ⚙️ Paso 2: Configuración de Monitoreo en RDS
+
+### **A) Habilitar Enhanced Monitoring**
+
+1. Ve a **RDS > Databases**, selecciona tu instancia.
+2. Haz clic en **Modify**.
+3. En **Monitoring**, activa **Enhanced monitoring** y selecciona el nivel de detalle (por ejemplo, 1 minuto).
+4. Aplica los cambios (esto puede reiniciar la instancia).
+
+### **B) Visualizar métricas en CloudWatch**
+
+1. Ve a **CloudWatch > Metrics > RDS**.
+2. Encuentra métricas como:
+
+   * CPUUtilization
+   * FreeableMemory
+   * ReadIOPS / WriteIOPS
+
+---
+
+## ⚙️ Paso 3: Configuración de Monitoreo en Lambda
+
+1. Ve a **Lambda > Functions**, selecciona tu función.
+2. Ejecuta varias invocaciones para generar actividad.
+3. Ve a **Monitoring** en la función Lambda para ver métricas rápidas.
+4. Accede a **CloudWatch > Metrics > Lambda** para métricas más detalladas:
+
+   * Invocations
+   * Duration
+   * Errors
+   * Throttles
+
+---
+
+## ⚙️ Paso 4: Consultar Logs en CloudWatch Logs
+
+* Para **EC2**: Instala y configura el **CloudWatch Agent** para enviar logs del sistema.
+* Para **RDS**: Habilita exportación de logs en los parámetros de la instancia.
+* Para **Lambda**: Los logs se envían automáticamente a CloudWatch Logs en el grupo `/aws/lambda/<function_name>`.
+
+### **Ver logs en CloudWatch**
+
+1. Ve a **CloudWatch > Logs > Log groups**.
+2. Selecciona el grupo correspondiente para revisar logs en tiempo real.
+
+---
+
+## ⚙️ Paso 5: Crear dashboards personalizados en CloudWatch
+
+1. Ve a **CloudWatch > Dashboards > Create dashboard**.
+2. Elige un nombre y agrega widgets:
+
+   * Gráficos de CPU de EC2, errores de Lambda, conexiones de RDS.
+   * Tablas, mapas, gauges, etc.
+3. Guarda y comparte tu dashboard con el equipo.
+
+---
+
+## ⚙️ Paso 6: Configurar alarmas en CloudWatch
+
+### **A) Crear una alarma para EC2 (ejemplo CPU > 80%)**
+
+1. Ve a **CloudWatch > Alarms > Create alarm**.
+2. Elige la métrica `CPUUtilization` de tu instancia EC2.
+3. Define la condición: **Greater/Equal 80%** por más de 5 minutos.
+4. Configura una acción (enviar notificación a SNS, correo, ejecutar una Lambda).
+5. Nombra y crea la alarma.
+
+### **B) Crear alarmas similares para RDS y Lambda**
+
+* RDS: Por ejemplo, `FreeStorageSpace < 1000 MB`.
+* Lambda: Por ejemplo, `Errors > 0` o `Duration > 1000 ms`.
+
+---
+
+## ⚙️ Paso 7: Automatización básica con EventBridge (opcional)
+
+1. Ve a **EventBridge > Rules > Create rule**.
+2. Define un patrón (por ejemplo, cualquier cambio de estado de EC2 o RDS).
+3. Elige como acción ejecutar una función Lambda (remediación automática, notificación, etc.).
+
+---
+
+## 🚦 **Validación**
+
+* Genera actividad en las instancias para probar que las métricas y logs aparecen en los dashboards y que las alarmas se disparan.
+* Verifica que recibes notificaciones o que las acciones configuradas se ejecutan.
+
+---
+
+## 🚮 Limpieza (opcional)
+
+* Elimina alarmas y dashboards si no los necesitas más.
+* Detén o termina recursos usados para evitar costos inesperados.
+
+---
+
+## 📌 Buenas prácticas
+
+* Usa etiquetas (tags) en todos los recursos para facilitar búsqueda y organización en métricas/logs.
+* Revisa y ajusta las alarmas periódicamente para evitar ruido excesivo.
+* Comparte dashboards con los equipos adecuados para promover monitoreo colaborativo.
+
+---
+
+¡Laboratorio completo! 🚀 Ahora tienes CloudWatch configurado para monitorear servicios críticos en AWS.
+
