@@ -1,0 +1,139 @@
+¡Por supuesto! Aquí tienes el **laboratorio práctico** para el **día 5**: Despliegue y configuración de agentes Dynatrace (OneAgent) y visualización inicial de datos, **enfocado para realizarse en Azure**, y listo para publicar en GitHub en formato Markdown.
+
+---
+
+# 🛠️ Laboratorio: Despliegue y configuración de Dynatrace OneAgent en Azure
+
+## 📋 Objetivo
+
+Instalar y configurar Dynatrace OneAgent en una máquina virtual en Azure, validar la conexión con la plataforma Dynatrace y explorar la visualización inicial de datos recolectados.
+
+---
+
+## 📝 Requisitos previos
+
+* Cuenta de Dynatrace (puedes usar el trial gratuito: [https://www.dynatrace.com/trial/](https://www.dynatrace.com/trial/))
+* Acceso al [Azure Portal](https://portal.azure.com)
+* Acceso SSH o RDP a una VM de Azure (Ubuntu o Windows Server)
+* Navegador web
+
+---
+
+## ⚙️ Paso 1: Crear una Máquina Virtual en Azure
+
+1. Inicia sesión en el [Azure Portal](https://portal.azure.com).
+2. Ve a **Resource Groups** y usa el grupo asignado a tu usuario (`USER01-RG`, `USER02-RG`, etc.).
+3. Haz clic en **+ Add** > **Virtual Machine**.
+4. Elige:
+
+   * Imagen: **Ubuntu 22.04 LTS** (o Windows Server si prefieres).
+   * Tamaño: `Standard_B2s` o similar.
+   * Usuario y autenticación (clave SSH o contraseña segura).
+   * Red: Asocia la VM a tu VNet asignada.
+5. Haz clic en **Review + Create** y luego en **Create**.
+6. Una vez desplegada, anota la **IP pública** de la VM.
+
+---
+
+## ⚙️ Paso 2: Acceder a Dynatrace y obtener el instalador de OneAgent
+
+1. Ingresa a tu cuenta Dynatrace (https\://{your-environment-id}.live.dynatrace.com o usa la trial).
+2. En el menú izquierdo, ve a **Deploy Dynatrace** > **Start installation**.
+3. Elige el sistema operativo de tu VM (Linux/Windows).
+4. Copia el comando de instalación personalizado que incluye tu **token de entorno**.
+
+---
+
+## ⚙️ Paso 3: Instalar Dynatrace OneAgent en la Azure VM
+
+### Para **Ubuntu Linux**:
+
+1. Conéctate por SSH a tu VM:
+
+   ```bash
+   ssh usuario@<ip-publica-vm>
+   ```
+
+2. **Ejecuta el comando de instalación** (ejemplo, reemplaza por el que copiaste en Dynatrace):
+
+   ```bash
+   wget -O Dynatrace-OneAgent.sh "<ENLACE_DESCARGA_DEL_PORTAL_DYNATRACE>"
+   sudo /bin/sh Dynatrace-OneAgent.sh
+   ```
+
+   *Nota: El comando oficial de Dynatrace ya hace todo en uno, así que simplemente pégalo y ejecuta.*
+
+3. Espera a que termine la instalación.
+   Verifica que el servicio esté corriendo:
+
+   ```bash
+   sudo systemctl status oneagent
+   ```
+
+### Para **Windows Server**:
+
+1. Conéctate por RDP.
+2. Descarga el instalador desde el portal Dynatrace.
+3. Ejecuta el instalador como Administrador y sigue el asistente.
+4. Finaliza la instalación.
+
+---
+
+## ⚙️ Paso 4: Validar la conexión de la VM con Dynatrace
+
+1. Vuelve al portal Dynatrace, ve a **Hosts**.
+2. Deberías ver tu VM Azure conectada como un host monitorizado.
+3. Haz clic sobre el host para ver detalles: procesos, servicios, métricas de hardware.
+
+---
+
+## ⚙️ Paso 5: Generar actividad para visualizar datos
+
+* Ejecuta algunos comandos o procesos en la VM para generar métricas.
+* (Opcional) Instala un servidor web simple para ver detección automática de servicios:
+
+  ```bash
+  sudo apt update
+  sudo apt install apache2 -y
+  sudo systemctl start apache2
+  ```
+
+---
+
+## ⚙️ Paso 6: Explorar visualizaciones iniciales en Dynatrace
+
+1. En el host registrado, explora:
+
+   * Consumo de CPU, memoria, disco y red.
+   * Procesos detectados automáticamente.
+   * Servicios y puertos abiertos.
+2. Ve a **Smartscape** para visualizar la topología.
+3. Prueba el **Data Explorer** para crear un gráfico simple de métricas.
+
+---
+
+## ⚙️ Paso 7: (Opcional) Habilitar Real User Monitoring (RUM) o Synthetic Monitoring
+
+* En Dynatrace, explora la opción **Applications & Microservices**.
+* Si tienes una web en la VM, sigue las instrucciones para integrar el snippet de RUM.
+
+---
+
+## 🚮 Limpieza (Opcional)
+
+* Cuando termines el laboratorio, puedes detener la VM para ahorrar crédito o eliminar el resource group en Azure si ya no lo usas.
+
+---
+
+## 📌 Recomendaciones
+
+* Toma capturas de pantalla como evidencia de la VM apareciendo en Dynatrace y de los primeros dashboards.
+* Si tienes problemas con la instalación, revisa los logs de OneAgent:
+
+  ```bash
+  sudo less /var/log/dynatrace/oneagent/oneagent.log
+  ```
+
+---
+
+¡Laboratorio completo! 🚀 Ahora tienes visibilidad de tu VM Azure en Dynatrace y puedes continuar con la exploración y análisis avanzado.
