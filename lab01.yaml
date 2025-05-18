@@ -1,205 +1,214 @@
-🛠️ Laboratorio Práctico: Instalación y configuración básica de Elasticsearch en Azure VM
-Duración aproximada: 2 horas
-Objetivo: Que los participantes puedan instalar y configurar Elasticsearch en una máquina virtual en Azure desde cero.
+# 🛠️ Laboratorio: Instalación y configuración básica de Elasticsearch en Azure
 
-📝 Requisitos previos:
-Cuenta activa de Azure con $50 USD asignados por estudiante.
+## 📋 **Objetivo**
 
-Acceso a Azure Portal.
+Instalar y configurar Elasticsearch en una máquina virtual (VM) en Azure para cada usuario individualmente, usando un grupo de recursos propio.
 
-Conocimientos básicos del uso de terminal o consola.
+---
 
-🚩 Parte 1: Creación de recursos en Azure (30 minutos)
-✅ Paso 1: Crear un grupo de recursos
-Inicia sesión en Azure Portal.
+## 📝 **Requisitos previos**
 
-Click en Resource Groups → Create.
+* Cuenta Azure con presupuesto asignado (\$50 USD por usuario).
+* Acceso al [Azure Portal](https://portal.azure.com).
+* Terminal SSH (recomendado: Bash, PowerShell o similar).
 
-Escribe:
+---
 
-Nombre: elasticsearch-lab-rg
+## ⚙️ **Paso 1: Creación del Grupo de Recursos**
 
-Región: selecciona la más cercana (p.ej., East US)
+Cada estudiante crea su propio grupo:
 
-Click en Review + create, luego Create.
+* Nombre sugerido: `USER01-RG`, `USER02-RG`, etc.
+* Región recomendada: `East US` o la más cercana.
 
-✅ Paso 2: Crear una Virtual Network (VNet)
-Ve al grupo de recursos creado (elasticsearch-lab-rg).
+**Procedimiento:**
 
-Click en + Add y busca "Virtual Network".
+1. Inicia sesión en [Azure Portal](https://portal.azure.com).
+2. Dirígete a **Resource Groups** → **Create**.
+3. Ingresa nombre (ej.: `USER01-RG`) y región.
+4. Click en **Review + create** y luego en **Create**.
 
-Nombre: elasticsearch-vnet
+---
 
-Address space: 10.0.0.0/16
+## ⚙️ **Paso 2: Crear una Virtual Network (VNet)**
 
-Subnet:
+Dentro del grupo creado:
 
-Name: default
+* Nombre: `USER01-VNet`
+* Address Space: `10.0.0.0/16`
+* Subnet: `default` con rango `10.0.0.0/24`
 
-Address range: 10.0.0.0/24
+**Procedimiento:**
 
-Click en Review + create, luego Create.
+1. Ingresa al grupo de recursos creado.
+2. Click en **+ Add** → busca **Virtual Network**.
+3. Llena los datos anteriores.
+4. Click en **Review + create** y luego **Create**.
 
-✅ Paso 3: Crear Máquina Virtual (Azure VM)
-Desde tu grupo de recursos, click en + Add y busca "Virtual Machine".
+---
 
-Configura así:
+## ⚙️ **Paso 3: Crear Máquina Virtual (VM)**
 
-Nombre VM: elasticsearch-vm
+* Nombre VM: `USER01-VM`
+* Imagen: **Ubuntu Server 22.04 LTS**
+* Tamaño recomendado: `Standard_B2s` (económico)
+* Autenticación: SSH (generar y guardar claves)
 
-Región: Misma región que antes.
+**Procedimiento:**
 
-Imagen: Ubuntu Server 22.04 LTS.
+1. Desde el grupo de recursos, click en **+ Add**, busca **Virtual Machine**.
+2. Configura según los datos anteriores.
+3. En Networking, asocia la VM a la `USER01-VNet`.
+4. Click en **Review + create** y luego **Create**.
 
-Size: Elige uno económico (ejemplo recomendado: B2s).
+> ⚠️ **Importante:** Guarda cuidadosamente la clave SSH generada.
 
-Authentication: SSH Public Key o usuario/contraseña (elige tu preferencia).
+---
 
-En Networking: asegúrate que esté asociada a la VNet creada (elasticsearch-vnet).
+## ⚙️ **Paso 4: Conectarte a la Azure VM**
 
-Revisa y haz click en Create.
+* Usa SSH para conectarte:
 
-⚠️ Importante: Guarda o descarga el archivo de claves SSH si lo usas.
+```bash
+ssh usuario@<ip-publica-vm>
+```
 
-🚩 Parte 2: Instalación básica de Elasticsearch (45 minutos)
-✅ Paso 4: Conectarte a la Azure VM
-Desde Azure Portal, accede a tu VM.
+---
 
-Copia la IP pública.
+## ⚙️ **Paso 5: Instalación de Java**
 
-Usa SSH desde tu computadora para conectarte:
+Dentro de la VM ejecuta:
 
-shell
-Copy
-Edit
-ssh tu_usuario@ip_publica_vm
-✅ Paso 5: Instalar Java (Requisito previo de Elasticsearch)
-shell
-Copy
-Edit
+```bash
 sudo apt update
 sudo apt install openjdk-17-jdk -y
-Verifica la instalación:
-
-shell
-Copy
-Edit
 java -version
-✅ Paso 6: Instalar Elasticsearch
-Descarga la clave GPG y añade el repositorio Elasticsearch:
+```
 
-shell
-Copy
-Edit
+---
+
+## ⚙️ **Paso 6: Instalación de Elasticsearch**
+
+```bash
 wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-8.x.list
-Actualiza e instala Elasticsearch:
 
-shell
-Copy
-Edit
+echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-8.x.list
+
 sudo apt update
 sudo apt install elasticsearch -y
-✅ Paso 7: Configurar Elasticsearch
-Edita la configuración:
+```
 
-shell
-Copy
-Edit
+---
+
+## ⚙️ **Paso 7: Configurar Elasticsearch**
+
+Edita configuración:
+
+```bash
 sudo nano /etc/elasticsearch/elasticsearch.yml
-Dentro del archivo, añade o modifica:
+```
 
-yaml
-Copy
-Edit
+Añade/modifica:
+
+```yaml
 network.host: 0.0.0.0
 http.port: 9200
 discovery.type: single-node
 xpack.security.enabled: false
-Guarda y cierra (Ctrl + X, Y, luego Enter).
+```
 
-✅ Paso 8: Iniciar y verificar Elasticsearch
-Habilita e inicia el servicio:
+Guarda (`Ctrl+X`, `Y`, `Enter`).
 
-shell
-Copy
-Edit
+---
+
+## ⚙️ **Paso 8: Iniciar Elasticsearch**
+
+```bash
 sudo systemctl enable elasticsearch
 sudo systemctl start elasticsearch
-Verifica el estado:
-
-shell
-Copy
-Edit
 sudo systemctl status elasticsearch
-Prueba el acceso mediante CURL:
+```
 
-shell
-Copy
-Edit
+Verifica instalación:
+
+```bash
 curl -X GET "localhost:9200"
-Deberías recibir información JSON sobre el cluster Elasticsearch.
+```
 
-🚩 Parte 3: Acceso remoto desde tu navegador local (20 minutos)
-Desde Azure Portal:
+---
 
-Ve a tu VM → Networking → Añade una regla entrante para puerto 9200.
+## ⚙️ **Paso 9: Acceso desde navegador**
 
-Luego, desde tu navegador, ingresa:
+En Azure, permite acceso al puerto `9200`:
 
-cpp
-Copy
-Edit
-http://<ip_publica_vm>:9200
-Deberías ver una respuesta JSON con información del cluster Elasticsearch.
+* VM → **Networking** → Añade regla entrante `TCP 9200`.
 
-🚩 Parte 4: Pruebas básicas CRUD en Elasticsearch (25 minutos)
-Desde la terminal conectada a tu VM:
+Accede vía navegador:
 
-✅ Crear un índice:
-shell
-Copy
-Edit
+```
+http://<ip-publica-vm>:9200
+```
+
+---
+
+## ⚙️ **Paso 10: Operaciones CRUD básicas**
+
+Desde terminal VM:
+
+**Crear índice:**
+
+```bash
 curl -X PUT "localhost:9200/mi_indice"
-✅ Insertar documento (Create):
-shell
-Copy
-Edit
+```
+
+**Crear documento:**
+
+```bash
 curl -X POST "localhost:9200/mi_indice/_doc/" -H 'Content-Type: application/json' -d'
 {
   "curso": "Elasticsearch",
   "empresa": "Kyndryl",
   "duracion": "2 horas"
 }'
-✅ Consultar documento (Read/Search):
-shell
-Copy
-Edit
-curl -X GET "localhost:9200/mi_indice/_search?pretty"
-✅ Actualizar documento (Update):
-Cambia <document_id> por el ID obtenido al crear el documento:
+```
 
-shell
-Copy
-Edit
+**Consultar documentos:**
+
+```bash
+curl -X GET "localhost:9200/mi_indice/_search?pretty"
+```
+
+**Actualizar documento:** *(usa tu document\_id)*
+
+```bash
 curl -X POST "localhost:9200/mi_indice/_update/<document_id>" -H 'Content-Type: application/json' -d'
 {
   "doc": {"duracion": "4 horas"}
 }'
-✅ Eliminar documento (Delete):
-Cambia <document_id> por tu ID:
+```
 
-shell
-Copy
-Edit
+**Eliminar documento:** *(usa tu document\_id)*
+
+```bash
 curl -X DELETE "localhost:9200/mi_indice/_doc/<document_id>"
-🚩 Parte 5: Cierre y limpieza (5 minutos)
-Detén Elasticsearch (opcional):
+```
 
-shell
-Copy
-Edit
-sudo systemctl stop elasticsearch
-Opcional: Elimina los recursos de Azure (si no los usarás más):
+---
 
-Desde Azure Portal, ve al grupo de recursos y haz clic en Delete resource group.
+## 🚮 **Limpieza de recursos** *(Opcional al finalizar)*
+
+Desde Azure Portal, elimina tu grupo de recursos:
+
+* Ve a tu **Resource Group** → **Delete resource group**.
+
+---
+
+## 📌 **Recomendaciones finales**
+
+* Monitorea regularmente tu uso en Azure.
+* Guarda evidencia de resultados y comandos realizados.
+* Comparte dudas o problemas durante el curso.
+
+---
+
+¡Buen trabajo! 🚀 Ahora tienes Elasticsearch funcionando en tu Azure VM.
