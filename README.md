@@ -1,1 +1,1 @@
-﻿# "Escuela Data Analytics I: Dynatrace, ELK y Observabilidad"
+﻿# "Escuela Data Analytics I: ELK y Observabilidad"
