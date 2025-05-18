@@ -19,7 +19,7 @@ Instalar y configurar Elasticsearch en una máquina virtual (VM) en Azure para c
 Cada estudiante crea su propio grupo:
 
 * Nombre sugerido: `USER01-RG`, `USER02-RG`, etc.
-* Región recomendada: `East US` o la más cercana.
+* Región recomendada: `East US 2` o la más cercana.
 
 **Procedimiento:**
 
