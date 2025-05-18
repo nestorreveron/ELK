@@ -1,0 +1,216 @@
+# 🛠️ Laboratorio: Implementar el stack completo Prometheus/Grafana en Kubernetes
+
+## 📋 Objetivo
+
+Desplegar un entorno de monitoreo profesional en Kubernetes usando Prometheus y Grafana.
+Incluye instalación con Helm, configuración de exporters, pruebas de consultas y creación de dashboards personalizados.
+
+---
+
+## 📝 Prerrequisitos
+
+* Clúster de Kubernetes funcional (puede ser AKS, EKS, GKE, Minikube, Kind, etc.)
+* Acceso a la terminal kubectl (con permisos de admin)
+* Helm instalado ([guía oficial](https://helm.sh/docs/intro/install/))
+* Acceso a internet desde el clúster
+* Permisos de administrador en el entorno de nube (si aplica)
+
+---
+
+## ⚙️ Paso 1: Preparar entorno de trabajo
+
+1. **Verificar conexión con clúster Kubernetes:**
+
+   ```bash
+   kubectl cluster-info
+   kubectl get nodes
+   ```
+
+2. **Crear namespace dedicado para monitoreo:**
+
+   ```bash
+   kubectl create namespace monitoring
+   ```
+
+---
+
+## ⚙️ Paso 2: Instalar Prometheus usando Helm
+
+1. **Agregar el repositorio de charts de Prometheus:**
+
+   ```bash
+   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+   helm repo update
+   ```
+
+2. **Instalar Prometheus en el namespace de monitoreo:**
+
+   ```bash
+   helm install prometheus prometheus-community/prometheus \
+     --namespace monitoring \
+     --set server.persistentVolume.enabled=false
+   ```
+
+   *Nota: Para producción, habilitar el almacenamiento persistente.*
+
+3. **Verificar recursos creados:**
+
+   ```bash
+   kubectl get all -n monitoring
+   ```
+
+4. **Exponer el servicio de Prometheus (opcional, para acceder desde tu máquina):**
+
+   ```bash
+   kubectl port-forward -n monitoring svc/prometheus-server 9090:80
+   ```
+
+   Accede desde tu navegador a `http://localhost:9090`
+
+---
+
+## ⚙️ Paso 3: Instalar Grafana usando Helm
+
+1. **Agregar el repositorio de charts de Grafana:**
+
+   ```bash
+   helm repo add grafana https://grafana.github.io/helm-charts
+   helm repo update
+   ```
+
+2. **Instalar Grafana en el mismo namespace:**
+
+   ```bash
+   helm install grafana grafana/grafana \
+     --namespace monitoring \
+     --set persistence.enabled=false \
+     --set adminPassword='GrafanaLab123!'
+   ```
+
+3. **Verificar recursos creados:**
+
+   ```bash
+   kubectl get all -n monitoring
+   ```
+
+4. **Obtener el pod de Grafana y exponer el servicio:**
+
+   ```bash
+   kubectl port-forward -n monitoring svc/grafana 3000:80
+   ```
+
+   Accede a Grafana en tu navegador: `http://localhost:3000`
+   Login: `admin` / `GrafanaLab123!`
+
+---
+
+## ⚙️ Paso 4: Instalar Node Exporter y Kube-State-Metrics
+
+Ambos suelen estar incluidos en el chart de Prometheus.
+Verifica que los DaemonSets de node-exporter y los deployments de kube-state-metrics estén presentes:
+
+```bash
+kubectl get daemonsets -n monitoring
+kubectl get deployments -n monitoring
+```
+
+Si no están, puedes instalarlos aparte (opcional):
+
+```bash
+helm install node-exporter prometheus-community/prometheus-node-exporter --namespace monitoring
+helm install kube-state-metrics prometheus-community/kube-state-metrics --namespace monitoring
+```
+
+---
+
+## ⚙️ Paso 5: Verifica el scraping de métricas
+
+1. Entra al portal de Prometheus (`http://localhost:9090`).
+2. Busca métricas como:
+
+   * `up`
+   * `node_cpu_seconds_total`
+   * `kube_pod_info`
+3. Realiza una consulta básica para verificar que los exporters están enviando datos.
+
+---
+
+## ⚙️ Paso 6: Configura Prometheus como fuente de datos en Grafana
+
+1. Accede a Grafana (`http://localhost:3000`).
+2. Ve a **Configuration > Data Sources > Add data source**.
+3. Selecciona **Prometheus** y usa la URL interna del servicio (`http://prometheus-server.monitoring.svc.cluster.local`), o `http://localhost:9090` si usas port-forward.
+4. Haz clic en **Save & Test** para verificar la conexión.
+
+---
+
+## ⚙️ Paso 7: Crea dashboards personalizados en Grafana
+
+1. En **+ > Dashboard > Add new panel**.
+2. Selecciona la fuente de datos **Prometheus**.
+3. Escribe consultas PromQL, por ejemplo:
+
+   * Uso de CPU:
+
+     ```promql
+     sum(rate(node_cpu_seconds_total{mode!="idle"}[5m])) by (instance)
+     ```
+   * Uso de memoria:
+
+     ```promql
+     sum(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) by (instance)
+     ```
+   * Pods por estado:
+
+     ```promql
+     count(kube_pod_status_phase{phase="Running"}) by (namespace)
+     ```
+4. Ajusta visualizaciones (gráficos, tablas, gauges).
+5. Guarda tu dashboard, asígnale un nombre y descripción.
+
+---
+
+## ⚙️ Paso 8: Monitoreo avanzado de Kubernetes
+
+1. Usa dashboards comunitarios desde [Grafana.com/dashboards](https://grafana.com/grafana/dashboards/) buscando “Kubernetes” y “Node Exporter”.
+2. Importa dashboards usando el ID en **+ > Import** en Grafana.
+3. Ajusta variables y data sources según tu entorno.
+
+---
+
+## ⚙️ Paso 9: Prueba y validación
+
+* Escala un deployment en Kubernetes y observa los cambios en tiempo real en Prometheus y Grafana.
+* Simula consumo de recursos (ejecuta cargas en pods) y valida que las métricas y paneles lo reflejen.
+* Crea una alerta visual en Grafana (por ejemplo, uso de CPU > 90%).
+
+---
+
+## ⚙️ Paso 10: Troubleshooting común
+
+* **Grafana no ve datos:** revisa la URL del data source y la conexión con Prometheus.
+* **No hay métricas de nodos/pods:** revisa los exporters, sus logs (`kubectl logs ...`), y que los endpoints estén siendo scrapeados.
+* **Permisos insuficientes:** revisa roles y service accounts en el namespace.
+
+---
+
+## 🚮 Limpieza (opcional)
+
+* Para liberar recursos, elimina el namespace de monitoreo:
+
+  ```bash
+  kubectl delete namespace monitoring
+  ```
+
+---
+
+## 📌 Consejos y mejores prácticas
+
+* Usa namespaces separados para monitoreo y producción.
+* Habilita almacenamiento persistente en Prometheus/Grafana para entornos reales.
+* Documenta tus dashboards y consultas para futuras referencias.
+* Considera la seguridad: restringe el acceso a las UIs y protege las credenciales.
+
+---
+
+¡Laboratorio completo! 🚀 Ahora tienes Prometheus y Grafana monitoreando en tiempo real tu clúster Kubernetes.
