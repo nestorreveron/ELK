@@ -1,0 +1,135 @@
+¡Por supuesto! Aquí tienes el **laboratorio práctico** para el Día 6:
+**Simulación y resolución de problemas de rendimiento mediante alertas e inteligencia artificial de Dynatrace**.
+
+Está pensado para ejecutarse sobre las VMs Azure que los estudiantes ya tienen conectadas a Dynatrace, y en formato Markdown (MD) listo para GitHub.
+
+---
+
+# 🛠️ Laboratorio: Simulación y Resolución de Problemas de Rendimiento con Dynatrace AI (Davis)
+
+## 📋 Objetivo
+
+Simular un problema de rendimiento en una VM Azure monitorizada por Dynatrace, observar la detección automática, analizar la causa raíz con Davis AI, y practicar la resolución y documentación del incidente.
+
+---
+
+## 📝 Requisitos previos
+
+* VM Azure monitorizada por Dynatrace OneAgent.
+* Acceso al portal de Dynatrace.
+* Acceso SSH o RDP a la VM.
+* Permisos para modificar o detener procesos en la VM.
+
+---
+
+## ⚙️ Paso 1: Acceso y verificación inicial
+
+1. Ingresa al [portal Dynatrace](https://{your-environment-id}.live.dynatrace.com).
+2. Busca tu VM en **Infrastructure → Hosts**.
+3. Confirma que los datos y métricas se estén actualizando en tiempo real.
+
+---
+
+## ⚙️ Paso 2: Simulación de un problema de alto consumo de CPU
+
+**En una VM Ubuntu Linux:**
+
+1. Conéctate vía SSH:
+
+   ```bash
+   ssh usuario@<ip-publica-vm>
+   ```
+
+2. Genera una carga alta de CPU (puedes usar `stress`):
+
+   * Instala `stress` si no lo tienes:
+
+     ```bash
+     sudo apt update
+     sudo apt install stress -y
+     ```
+
+   * Lanza la carga (ajusta el número de CPU según tu VM):
+
+     ```bash
+     stress --cpu 2 --timeout 300
+     ```
+
+   Esto simula un uso intenso de CPU durante 5 minutos.
+
+**En Windows:**
+
+1. Abre el Administrador de tareas y ejecuta varias instancias de una app que consuma CPU (p. ej., calculadora con operaciones pesadas o un script en bucle).
+
+---
+
+## ⚙️ Paso 3: Observa la alerta automática en Dynatrace
+
+1. Vuelve al portal Dynatrace.
+2. Ve a **Problems** (barra lateral izquierda).
+3. Deberías ver un problema generado por alto uso de CPU.
+4. Haz clic en el problema para ver el análisis de Davis AI:
+
+   * Descripción del problema.
+   * Entidades afectadas (host, procesos).
+   * Línea de tiempo y duración.
+   * Sugerencias de resolución y causa raíz.
+
+---
+
+## ⚙️ Paso 4: Analiza el incidente y documenta
+
+1. Lee atentamente la explicación de Davis AI.
+2. Identifica la causa raíz sugerida (por ejemplo, “Consumo excesivo de CPU en proceso X”).
+3. Documenta:
+
+   * ¿Cuál fue el síntoma?
+   * ¿Qué causa raíz detectó Dynatrace?
+   * ¿Cuáles fueron las recomendaciones de remediación?
+
+---
+
+## ⚙️ Paso 5: Resolver el incidente
+
+1. Detén el proceso que genera carga si aún no ha terminado.
+
+   * Para `stress` en Linux:
+
+     ```bash
+     sudo pkill stress
+     ```
+
+   * En Windows, cierra las aplicaciones de prueba.
+
+2. Espera unos minutos.
+
+3. Dynatrace debe detectar la recuperación automáticamente y cerrar el problema.
+
+---
+
+## ⚙️ Paso 6: Crea un dashboard y SLO relevante
+
+1. En **Dashboards** en Dynatrace, crea un nuevo panel llamado “Monitoreo de rendimiento VM”.
+2. Añade widgets de CPU, memoria y alertas recientes.
+3. Ve a **Service-level objectives** y crea un SLO para CPU (< 80% de uso promedio en la última hora).
+4. Guarda y visualiza el cumplimiento del SLO.
+
+---
+
+## ⚙️ Paso 7: Reflexión y limpieza
+
+* Reflexiona: ¿qué tan rápido detectó Dynatrace el incidente? ¿Qué tan clara fue la explicación de Davis AI?
+* Guarda capturas de pantalla como evidencia para el reporte.
+* Si no lo harás más, detén o elimina la VM para ahorrar recursos en Azure.
+
+---
+
+## 📌 Recomendaciones
+
+* Prueba crear alertas personalizadas de umbral para otras métricas (memoria, disco, errores HTTP).
+* Repite la simulación usando diferentes procesos o errores (por ejemplo, detener un servicio web).
+* Explora el historial de problemas detectados y cómo se relacionan con los SLO definidos.
+
+---
+
+¡Laboratorio completo! 🚀 Has practicado la simulación, detección y resolución de problemas con la inteligencia artificial de Dynatrace, y has reforzado el monitoreo avanzado de entornos cloud modernos.
