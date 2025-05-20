@@ -224,6 +224,88 @@ curl -X POST "localhost:9200/eventos_geo/_doc" -H 'Content-Type: application/jso
 
 ## ⚙️ Paso 5: Automatización y alertas (si tu Kibana lo soporta)
 
+
+Configuración del Kibana con Alert:
+
+
+****
+---
+
+## **1. Agrega una clave de cifrado en tu `kibana.yml`**
+
+Esto es obligatorio para que las alertas funcionen y persistan.
+
+Abre el archivo de configuración de Kibana (`/etc/kibana/kibana.yml` en Linux) y **agrega una clave** de al menos 32 caracteres:
+
+```yaml
+xpack.encryptedSavedObjects.encryptionKey: "estaEsUnaClaveSuperSeguraCon32Caracteres2025"
+```
+
+Puedes generar una clave aleatoria segura con este comando en Linux:
+
+```bash
+openssl rand -base64 32
+```
+
+O simplemente usa una frase larga.
+
+---
+
+## **2. (Opcional) Limita los hosts permitidos para acciones externas**
+
+Por seguridad, si quieres usar conectores de email/webhook, limita los hosts:
+
+```yaml
+xpack.actions.allowedHosts: ["*"]  # Permite todos los hosts externos (por defecto)
+```
+
+> Para máxima seguridad, especifica solo los hosts necesarios.
+
+---
+
+## **3. (Opcional) Configura un conector SMTP para email**
+
+Ejemplo para permitir envío de emails de alerta con Gmail, Outlook o tu propio SMTP:
+
+```yaml
+xpack.actions.customHostSettings:
+  - url: smtp://smtp.gmail.com:465
+    smtp:
+      requireTLS: true
+    ssl:
+      verificationMode: 'full'
+```
+
+> Cambia los datos según tu servidor SMTP.
+
+---
+
+## **4. Guarda y reinicia Kibana**
+
+Guarda los cambios en `kibana.yml` y reinicia el servicio Kibana:
+
+```bash
+sudo systemctl restart kibana
+```
+
+o
+
+```bash
+sudo service kibana restart
+```
+
+---
+
+## **5. Crea tu alerta en la interfaz web**
+
+1. Entra a Kibana y ve a **Stack Management > Alerts**.
+2. Crea una **Rule** (por ejemplo, tipo "Elasticsearch query").
+3. Define el índice (`eventos_geo`), la consulta y el umbral.
+4. Si quieres notificación externa, crea un **Connector** en "Stack Management > Connectors" (ejemplo: Email).
+5. Asocia el conector a la acción de la alerta
+
+***
+
 1. Ve a **Stack Management → Alerts and Actions**.
 2. Crea una alerta:
 
