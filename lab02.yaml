@@ -81,7 +81,7 @@ http://<ip-publica-vm>:5601
 * Finaliza con **Create Index Pattern**.
 
 
-Agregar información:
+OPCIÓN A: Agregar información:
 
 1. Verifica si tu índice tiene datos en Elasticsearch
 En tu servidor o desde una terminal con acceso a Elasticsearch:
@@ -148,6 +148,113 @@ Asegúrate de que el rango de fechas en Kibana cubra los documentos.
 Confirma que ves datos en Discover antes de crear dashboards.
 
 Vuelve a construir visualizaciones con los nuevos campos que aparecen.
+
+OPCIÓN B: Agregar información:
+
+1. Método rápido: Usando cURL + script Bash (para pequeños datasets JSON)
+Si tienes un archivo .json (por ejemplo, una lista de documentos) puedes hacer un script para cargarlo en lote:
+
+Supón que tienes un archivo llamado datos.jsonl donde cada línea es un documento JSON.
+
+bash
+Copy
+Edit
+while read line; do
+  curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d "$line"
+done < datos.jsonl
+Ventaja: Simple para pocos miles de registros.
+
+Limite: No recomendado para datasets de cientos de miles o millones.
+
+2. Método profesional: Bulk API de Elasticsearch
+La Bulk API es la mejor forma para insertar masivamente datos en Elasticsearch.
+
+A. Prepara tu dataset en formato “NDJSON”
+(Ejemplo, cada línea: acción y documento)
+
+arduino
+Copy
+Edit
+{ "index": {} }
+{ "curso": "ELK Básico", "empresa": "Kyndryl", "duracion": 6, "fecha": "2024-05-19T10:00:00Z", "status": "200" }
+{ "index": {} }
+{ "curso": "Kubernetes", "empresa": "Microsoft", "duracion": 8, "fecha": "2024-05-18T11:00:00Z", "status": "404" }
+...
+Guárdalo como bulk_datos.json.
+
+B. Carga el dataset con un solo comando:
+bash
+Copy
+Edit
+curl -X POST "localhost:9200/mi_indice/_bulk" -H 'Content-Type: application/x-ndjson' --data-binary @bulk_datos.json
+Ventaja: Súper eficiente, soporta decenas de miles de documentos en una sola llamada.
+
+Dataset público: Puedes usar cualquier dataset en CSV/JSON y transformarlo a NDJSON con Python, jq o herramientas similares.
+
+3. Usando Logstash (ideal para CSV, JSON, o ingestión continua)
+Logstash permite cargar datos masivos, transformar y enviar directo a Elasticsearch.
+
+Ejemplo de archivo de configuración para CSV:
+
+logstash.conf
+
+conf
+Copy
+Edit
+input {
+  file {
+    path => "/ruta/al/dataset.csv"
+    start_position => "beginning"
+    sincedb_path => "/dev/null"
+  }
+}
+filter {
+  csv {
+    separator => ","
+    columns => ["campo1","campo2","campo3","fecha","status"]
+  }
+  date {
+    match => ["fecha", "yyyy-MM-dd'T'HH:mm:ss'Z'"]
+    target => "@timestamp"
+  }
+}
+output {
+  elasticsearch {
+    hosts => ["http://localhost:9200"]
+    index => "mi_indice"
+  }
+  stdout { codec => rubydebug }
+}
+Ventaja: Excelente para transformar, enriquecer y cargar datos estructurados de cualquier tamaño.
+
+Ejecuta Logstash:
+
+bash
+Copy
+Edit
+logstash -f logstash.conf
+4. Dataset públicos recomendados
+Kaggle Datasets
+
+Datos Abiertos del Gobierno
+
+UCI Machine Learning Repository
+
+Descarga en CSV o JSON, usa uno de los métodos anteriores para cargar a Elasticsearch.
+
+5. Tips extra
+Si tienes un CSV, puedes convertirlo a JSON o NDJSON con Python:
+
+python
+Copy
+Edit
+import csv, json
+with open('datos.csv') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        print(json.dumps(row))
+Si tu dataset es muy grande, divide en partes (archivos más pequeños) y usa bulk por lotes.
+
 
 ---
 
