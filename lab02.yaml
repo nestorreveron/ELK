@@ -80,6 +80,75 @@ http://<ip-publica-vm>:5601
 * Selecciona el campo de tiempo si aplica, o **skip** si no lo tienes.
 * Finaliza con **Create Index Pattern**.
 
+
+Agregar información:
+
+1. Verifica si tu índice tiene datos en Elasticsearch
+En tu servidor o desde una terminal con acceso a Elasticsearch:
+
+curl -X GET "localhost:9200/mi_indice/_search?pretty"
+
+O (para solo contar documentos):
+
+curl -X GET "localhost:9200/mi_indice/_count?pretty"
+
+Si el resultado es {"count":0...}, tu índice está vacío.
+
+Si hay datos pero no los ves en Kibana, revisa el rango de fechas (ver punto 3).
+
+2. Ingresa datos de ejemplo al índice (si está vacío)
+Puedes insertar documentos manualmente para pruebas rápidas:
+
+curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
+{
+  "curso": "ELK Básico",
+  "empresa": "Kyndryl",
+  "duracion": 6,
+  "fecha": "2024-05-19T10:00:00Z",
+  "status": "200"
+}'
+
+Repite con más ejemplos cambiando los valores.
+
+Vuelve a consultar con /_count y asegúrate que tienes varios documentos.
+
+3. Ajusta el rango de fechas en Kibana
+
+MUY IMPORTANTE:
+Kibana, por defecto, solo muestra datos recientes (últimos 15 minutos/última hora).
+
+En la parte superior derecha, cambia el rango de tiempo a un rango mayor (por ejemplo: Last 7 days, This year, o un rango absoluto que cubra las 
+fechas de tus documentos de prueba).
+
+Si tus documentos no tienen campo de tiempo compatible (@timestamp), crea el índice sin campo temporal o selecciona “I don’t want to use the time filter”.
+
+4. Actualiza y vuelve a crear las visualizaciones
+Cuando confirmes que tienes datos:
+
+Ve a Discover y verifica que aparecen documentos.
+
+Ahora, en Dashboards, selecciona los campos deseados en la visualización.
+
+Si solo ves campos “Empty fields”, es porque no hay datos indexados o el mapping está mal.
+
+5. (Opcional) Reindexa o ingresa nuevos datos si cambiaste el mapping
+
+Si cambiaste el mapping o el formato del índice, puede que debas reindexar o borrar/recrear el índice.
+
+Resumen de pasos rápidos:
+
+Verifica si tienes datos en el índice:
+
+curl -X GET "localhost:9200/mi_indice/_count?pretty"
+
+Inserta documentos de prueba si está vacío.
+
+Asegúrate de que el rango de fechas en Kibana cubra los documentos.
+
+Confirma que ves datos en Discover antes de crear dashboards.
+
+Vuelve a construir visualizaciones con los nuevos campos que aparecen.
+
 ---
 
 ## ⚙️ Paso 5: Crear visualizaciones básicas
