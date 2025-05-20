@@ -255,6 +255,96 @@ with open('datos.csv') as csvfile:
         print(json.dumps(row))
 Si tu dataset es muy grande, divide en partes (archivos más pequeños) y usa bulk por lotes.
 
+OPCIÓN C: Agregar información:
+
+Ejemplo: Cargar datos de ventas (CSV) a Elasticsearch usando Logstash
+1. Descarga y revisa el dataset
+Descarga el archivo de Kaggle, por ejemplo: OnlineRetail.csv
+
+Colócalo en tu VM o servidor donde tengas Logstash.
+
+2. Crea el índice en Elasticsearch (opcional, para definir mapping)
+Ejemplo básico de mapping (ajústalo según tus campos):
+
+bash
+Copy
+Edit
+curl -X PUT "localhost:9200/ventas" -H 'Content-Type: application/json' -d'
+{
+  "mappings": {
+    "properties": {
+      "InvoiceNo":   { "type": "keyword" },
+      "StockCode":   { "type": "keyword" },
+      "Description": { "type": "text" },
+      "Quantity":    { "type": "integer" },
+      "InvoiceDate": { "type": "date", "format": "MM/dd/yyyy HH:mm" },
+      "UnitPrice":   { "type": "float" },
+      "CustomerID":  { "type": "keyword" },
+      "Country":     { "type": "keyword" }
+    }
+  }
+}'
+3. Crea el archivo de configuración para Logstash
+Guarda esto como ventas.conf:
+
+conf
+Copy
+Edit
+input {
+  file {
+    path => "/ruta/OnlineRetail.csv"
+    start_position => "beginning"
+    sincedb_path => "/dev/null"
+  }
+}
+filter {
+  csv {
+    separator => ","
+    skip_header => "true"
+    columns => ["InvoiceNo","StockCode","Description","Quantity","InvoiceDate","UnitPrice","CustomerID","Country"]
+  }
+  mutate {
+    convert => { "Quantity" => "integer" }
+    convert => { "UnitPrice" => "float" }
+  }
+  date {
+    match => ["InvoiceDate", "MM/dd/yyyy HH:mm"]
+    target => "@timestamp"
+  }
+}
+output {
+  elasticsearch {
+    hosts => ["http://localhost:9200"]
+    index => "ventas"
+  }
+  stdout { codec => rubydebug }
+}
+Ajusta la ruta del archivo CSV según la ubicación real en tu VM.
+
+4. Ejecuta Logstash para importar el dataset
+bash
+Copy
+Edit
+logstash -f ventas.conf
+Esto leerá el CSV, transformará los datos, y los cargará en el índice ventas de Elasticsearch.
+
+5. Visualiza y analiza los datos en Kibana
+Crea un Data View en Kibana llamado ventas.
+
+Explora los campos: podrás filtrar por país, ver tendencias de ventas por fecha, detectar picos en la cantidad de ventas, etc.
+
+Prueba crear dashboards:
+
+Total de ventas por país (Pie chart)
+
+Evolución de ventas por día (Line chart)
+
+Productos más vendidos (Bar chart)
+
+Análisis de clientes (Tablas y gráficos combinados)
+
+¿No tienes Logstash? Método alternativo con Bulk API
+Convierte el CSV a NDJSON con Python o cualquier conversor, y usa el método /_bulk explicado antes.
 
 ---
 
