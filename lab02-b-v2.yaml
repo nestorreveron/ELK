@@ -1,0 +1,215 @@
+
+# 🧑‍💻 Laboratorio Opcional Avanzado:
+
+**Análisis avanzado y visualizaciones interactivas en Kibana**
+
+---
+
+## 📋 Objetivo
+
+Profundizar en el uso de Kibana para análisis avanzados:
+
+* Crear visualizaciones avanzadas (TSVB, Heatmaps, Gauges, Maps, etc.)
+* Dominar el uso de dashboards dinámicos e interactivos
+* Realizar búsquedas complejas con KQL y transformar la experiencia de análisis
+* Configurar alertas y automatizaciones en la plataforma
+* Documentar, compartir y exportar hallazgos de forma profesional
+
+---
+
+## 📝 Requisitos previos
+
+* Haber completado el Lab02 (tener Elasticsearch y Kibana funcionales con datos reales en el índice `mi_indice`).
+* Acceso al portal web de Kibana desde tu navegador.
+* Disponer de documentos en el índice con campos como: `empresa`, `status`, `bytes`, `curso`, `fecha`, etc.
+* Rol de usuario con permisos para crear visualizaciones y dashboards.
+
+---
+
+## ⚙️ Paso 1: Explora y comprende tus datos
+
+1. Entra a **Discover** en Kibana.
+2. Selecciona el data view `mi_indice`.
+3. **Analiza los campos disponibles** (panel izquierdo), observa los tipos de datos (texto, número, fecha).
+4. Haz búsquedas simples:
+
+   * ¿Cuántos documentos hay por empresa?
+   * ¿Qué rangos de valores existen para `bytes` y `status`?
+5. Ajusta el rango de tiempo en la parte superior derecha para incluir todos tus datos relevantes.
+6. Si es posible, **exporta una muestra** a CSV para revisar la calidad de los datos.
+
+---
+
+## ⚙️ Paso 2: Crea visualizaciones avanzadas
+
+### **A. Time Series Visual Builder (TSVB)**
+
+1. Ve a **Analytics → Visualize Library → Create visualization**.
+2. Selecciona **Time Series**.
+3. Elige tu data view `mi_indice`.
+4. **Configura tu panel:**
+
+   * Métrica: Usa `count` (conteo de documentos) o el promedio de `bytes` por intervalo de tiempo.
+   * Filtros:
+
+     * Solo documentos de una empresa (`empresa: "Kyndryl"`)
+     * Solo status:200 vs status:500 para comparar.
+   * Añade **moving average** (media móvil) para identificar tendencias.
+   * Personaliza leyendas, títulos y formato de fechas.
+5. Guarda como “Tendencia Bytes por Status”.
+
+---
+
+### **B. Heatmap (Mapa de Calor)**
+
+1. Crea una nueva visualización **Heatmap**.
+2. Eje X: Por ejemplo, hora del día (`fecha` en modo hora)
+   Eje Y: Status (`status`)
+3. Métrica: Conteo de documentos.
+4. El heatmap mostrará **dónde hay más errores o actividad** según la hora y status.
+5. Guarda como “Heatmap de Actividad”.
+
+---
+
+### **C. Gauge y Goal (Medidores y Metas)**
+
+1. Selecciona **Gauge**.
+2. Métrica: Porcentaje de logs exitosos (`status: "200"`) respecto al total.
+3. Configura los umbrales de colores (verde, amarillo, rojo).
+4. Opcional: Agrega una meta para cantidad mínima de operaciones exitosas diarias.
+5. Guarda como “Medidor de Éxito”.
+
+---
+
+### **D. Maps (Geolocalización, si hay datos geográficos)**
+
+1. Ve a **Maps → Create map**.
+2. Usa un campo tipo país o ciudad, o mejor aún un `geo_point` si existe.
+3. Crea un mapa de densidad de eventos por país o región.
+4. Agrega capas adicionales:
+
+   * Un layer para status:500 (errores),
+   * Otro para status:200 (éxitos).
+5. Guarda como “Mapa Geográfico de Operaciones”.
+
+---
+
+### **E. Bar, Pie y Line Charts (para complementar)**
+
+1. Crea **Bar Chart**:
+
+   * Top empresas por cantidad de cursos.
+2. Crea **Pie Chart**:
+
+   * Proporción de status (200, 404, 500).
+3. Crea **Line Chart**:
+
+   * Evolución de bytes transferidos por fecha.
+
+---
+
+## ⚙️ Paso 3: Construye y personaliza tu dashboard interactivo
+
+1. Ve a **Analytics → Dashboard → Create new dashboard**.
+2. Añade tus visualizaciones avanzadas y básicas desde la **library**.
+3. Organiza el dashboard:
+
+   * Coloca los indicadores clave en la parte superior (gauges, metas, KPIs).
+   * Pon visualizaciones de tendencia y heatmaps en el centro.
+   * Usa mapas y gráficos circulares/barra al pie para análisis comparativos.
+4. Renombra el dashboard como **“Dashboard Avanzado Observabilidad”**.
+5. Ajusta el rango de fechas global y prueba los filtros.
+
+---
+
+### **Hazlo interactivo:**
+
+* Usa la barra de KQL para filtrar dinámicamente:
+
+  * Solo una empresa (`empresa: "Kyndryl"`)
+  * Solo eventos grandes (`bytes > 1000`)
+  * Solo errores (`status: "500"`)
+* Prueba “drilldowns”: Haz clic en un segmento de un gráfico y ve cómo se filtran los demás paneles (si tu versión de Kibana lo permite).
+* Modifica colores, títulos y leyendas para hacerlo más intuitivo.
+
+---
+
+## ⚙️ Paso 4: Búsquedas y análisis avanzados con KQL
+
+1. Realiza búsquedas complejas:
+
+   * Solo eventos de cierta empresa y bytes altos:
+
+     ```kql
+     empresa: "Kyndryl" AND bytes > 1500
+     ```
+   * Errores en un rango de fechas:
+
+     ```kql
+     status: "500" AND fecha >= "2024-05-01" AND fecha <= "2024-05-31"
+     ```
+   * Existencia de un campo:
+
+     ```kql
+     _exists_: user_agent
+     ```
+   * Consultas combinadas y anidadas:
+
+     ```kql
+     (status: "200" AND bytes > 500) OR (status: "500" AND empresa: "Microsoft")
+     ```
+2. Observa cómo el dashboard reacciona instantáneamente a los filtros avanzados.
+
+---
+
+## ⚙️ Paso 5: Automatización y alertas (si tu Kibana lo soporta)
+
+1. Ve a **Stack Management → Alerts and Actions**.
+2. Crea una alerta:
+
+   * Condición: porcentaje de errores (`status:500`) supera 5% del total en 10 minutos.
+   * Acción: Enviar email, webhook, log en disco, etc.
+3. Haz pruebas:
+
+   * Genera manualmente algunos documentos de error para verificar que la alerta se dispare.
+4. Integra la visualización de alertas en el dashboard (algunos paneles pueden mostrar el estado de alertas activas).
+
+---
+
+## ⚙️ Paso 6: Exporta, documenta y comparte
+
+1. Usa la opción **Share** para exportar el dashboard como PDF, PNG, o genera un enlace temporal para compartirlo.
+2. Escribe una breve documentación:
+
+   * **¿Qué mide cada panel?**
+   * **¿Qué patrones o anomalías encontraste?**
+   * **¿Qué decisiones puedes tomar con esta información?**
+3. Si el dashboard es para un equipo, deja notas y recomendaciones para que puedan reutilizarlo o expandirlo.
+
+---
+
+## 🚀 **Desafío profesional extra**
+
+* **Crea un dashboard de troubleshooting integral:**
+  Incluye paneles de logs, métricas, errores, y recursos (CPU, memoria si tienes esos datos).
+* **Agrega paneles de comparación entre empresas o periodos de tiempo.**
+* **Integra visualizaciones de Machine Learning** (si Kibana/Elastic lo permite) para detección automática de anomalías.
+
+---
+
+## 🚮 **Limpieza final (opcional)**
+
+* Borra dashboards, visualizaciones o alertas de prueba si ya no las necesitas.
+* Revisa las configuraciones de seguridad: restringe el acceso externo al puerto 5601 si ya no lo usas.
+* Documenta cualquier configuración especial que hayas realizado para poder replicar el laboratorio.
+
+---
+
+## 📌 **Tips expertos**
+
+* Usa la opción **Inspect** en cada visualización para ver la query que ejecuta.
+* Si tienes Elastic Stack Premium, explora los módulos de Machine Learning.
+* **Versiona** tus dashboards exportando el JSON de configuración.
+* Agrega descripciones y títulos claros a cada panel para que el dashboard sea autoexplicativo.
+
+
