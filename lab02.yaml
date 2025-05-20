@@ -368,6 +368,58 @@ Repite con otras visualizaciones:
 
 Desde tu dashboard:
 
+Agregar datos para los KQL:
+
+curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
+{
+  "curso": "ELK Básico",
+  "empresa": "Kyndryl",
+  "duracion": 12,
+  "fecha": "2024-05-19T10:00:00Z",
+  "status": "200",
+  "bytes": 1100
+}'
+
+curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
+{
+  "curso": "DevOps",
+  "empresa": "Microsoft",
+  "duracion": 8,
+  "fecha": "2024-05-18T11:00:00Z",
+  "status": "404",
+  "bytes": 800
+}'
+
+curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
+{
+  "curso": "Azure Monitor",
+  "empresa": "Kyndryl",
+  "duracion": 10,
+  "fecha": "2024-05-17T09:00:00Z",
+  "status": "200",
+  "bytes": 600
+}'
+
+curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
+{
+  "curso": "Kubernetes",
+  "empresa": "Google",
+  "duracion": 16,
+  "fecha": "2024-05-16T13:00:00Z",
+  "status": "200",
+  "bytes": 1500
+}'
+
+curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
+{
+  "curso": "Observabilidad",
+  "empresa": "Kyndryl",
+  "duracion": 14,
+  "fecha": "2024-05-15T15:00:00Z",
+  "status": "500",
+  "bytes": 1300
+}'
+
 * Usa la barra superior para filtrar usando consultas básicas KQL:
 
 Ejemplos:
