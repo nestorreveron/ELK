@@ -92,6 +92,66 @@ Profundizar en el uso de Kibana para análisis avanzados:
    * Otro para status:200 (éxitos).
 5. Guarda como “Mapa Geográfico de Operaciones”.
 
+Agregar datos opcional:
+
+curl -X PUT "localhost:9200/eventos_geo" -H 'Content-Type: application/json' -d'
+{
+  "mappings": {
+    "properties": {
+      "empresa": { "type": "keyword" },
+      "curso": { "type": "keyword" },
+      "fecha": { "type": "date" },
+      "status": { "type": "keyword" },
+      "bytes": { "type": "integer" },
+      "location": { "type": "geo_point" }
+    }
+  }
+}'
+
+
+Insertat documentos con ubicación:
+
+curl -X POST "localhost:9200/eventos_geo/_doc" -H 'Content-Type: application/json' -d'
+{
+  "empresa": "Kyndryl",
+  "curso": "ELK Geo",
+  "fecha": "2024-05-19T10:00:00Z",
+  "status": "200",
+  "bytes": 1200,
+  "location": { "lat": 9.9281, "lon": -84.0907 }  // San José, Costa Rica
+}'
+
+curl -X POST "localhost:9200/eventos_geo/_doc" -H 'Content-Type: application/json' -d'
+{
+  "empresa": "Microsoft",
+  "curso": "Azure Map",
+  "fecha": "2024-05-19T12:00:00Z",
+  "status": "404",
+  "bytes": 800,
+  "location": { "lat": 19.4326, "lon": -99.1332 }  // Ciudad de México
+}'
+
+curl -X POST "localhost:9200/eventos_geo/_doc" -H 'Content-Type: application/json' -d'
+{
+  "empresa": "Google",
+  "curso": "Kubernetes",
+  "fecha": "2024-05-19T11:00:00Z",
+  "status": "200",
+  "bytes": 1550,
+  "location": { "lat": 40.7128, "lon": -74.0060 }  // Nueva York, EE. UU.
+}'
+
+curl -X POST "localhost:9200/eventos_geo/_doc" -H 'Content-Type: application/json' -d'
+{
+  "empresa": "Kyndryl",
+  "curso": "Elastic Observability",
+  "fecha": "2024-05-20T09:30:00Z",
+  "status": "200",
+  "bytes": 1400,
+  "location": { "lat": 40.4168, "lon": -3.7038 }  // Madrid, España
+}'
+
+
 ---
 
 ### **E. Bar, Pie y Line Charts (para complementar)**
