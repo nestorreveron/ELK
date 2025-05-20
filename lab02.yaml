@@ -149,6 +149,8 @@ Confirma que ves datos en Discover antes de crear dashboards.
 
 Vuelve a construir visualizaciones con los nuevos campos que aparecen.
 
+
+
 OPCIÓN B: Agregar información:
 
 1. Método rápido: Usando cURL + script Bash (para pequeños datasets JSON)
@@ -156,12 +158,10 @@ Si tienes un archivo .json (por ejemplo, una lista de documentos) puedes hacer u
 
 Supón que tienes un archivo llamado datos.jsonl donde cada línea es un documento JSON.
 
-bash
-Copy
-Edit
 while read line; do
   curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d "$line"
 done < datos.jsonl
+
 Ventaja: Simple para pocos miles de registros.
 
 Limite: No recomendado para datasets de cientos de miles o millones.
@@ -172,20 +172,16 @@ La Bulk API es la mejor forma para insertar masivamente datos en Elasticsearch.
 A. Prepara tu dataset en formato “NDJSON”
 (Ejemplo, cada línea: acción y documento)
 
-arduino
-Copy
-Edit
 { "index": {} }
 { "curso": "ELK Básico", "empresa": "Kyndryl", "duracion": 6, "fecha": "2024-05-19T10:00:00Z", "status": "200" }
 { "index": {} }
 { "curso": "Kubernetes", "empresa": "Microsoft", "duracion": 8, "fecha": "2024-05-18T11:00:00Z", "status": "404" }
 ...
+
 Guárdalo como bulk_datos.json.
 
 B. Carga el dataset con un solo comando:
-bash
-Copy
-Edit
+
 curl -X POST "localhost:9200/mi_indice/_bulk" -H 'Content-Type: application/x-ndjson' --data-binary @bulk_datos.json
 Ventaja: Súper eficiente, soporta decenas de miles de documentos en una sola llamada.
 
@@ -225,15 +221,15 @@ output {
   }
   stdout { codec => rubydebug }
 }
+
 Ventaja: Excelente para transformar, enriquecer y cargar datos estructurados de cualquier tamaño.
 
 Ejecuta Logstash:
 
-bash
-Copy
-Edit
 logstash -f logstash.conf
+
 4. Dataset públicos recomendados
+
 Kaggle Datasets
 
 Datos Abiertos del Gobierno
@@ -245,14 +241,12 @@ Descarga en CSV o JSON, usa uno de los métodos anteriores para cargar a Elastic
 5. Tips extra
 Si tienes un CSV, puedes convertirlo a JSON o NDJSON con Python:
 
-python
-Copy
-Edit
 import csv, json
 with open('datos.csv') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
         print(json.dumps(row))
+        
 Si tu dataset es muy grande, divide en partes (archivos más pequeños) y usa bulk por lotes.
 
 OPCIÓN C: Agregar información:
@@ -266,9 +260,6 @@ Colócalo en tu VM o servidor donde tengas Logstash.
 2. Crea el índice en Elasticsearch (opcional, para definir mapping)
 Ejemplo básico de mapping (ajústalo según tus campos):
 
-bash
-Copy
-Edit
 curl -X PUT "localhost:9200/ventas" -H 'Content-Type: application/json' -d'
 {
   "mappings": {
@@ -284,12 +275,10 @@ curl -X PUT "localhost:9200/ventas" -H 'Content-Type: application/json' -d'
     }
   }
 }'
+
 3. Crea el archivo de configuración para Logstash
 Guarda esto como ventas.conf:
 
-conf
-Copy
-Edit
 input {
   file {
     path => "/ruta/OnlineRetail.csv"
@@ -319,12 +308,12 @@ output {
   }
   stdout { codec => rubydebug }
 }
+
+
 Ajusta la ruta del archivo CSV según la ubicación real en tu VM.
 
 4. Ejecuta Logstash para importar el dataset
-bash
-Copy
-Edit
+
 logstash -f ventas.conf
 Esto leerá el CSV, transformará los datos, y los cargará en el índice ventas de Elasticsearch.
 
