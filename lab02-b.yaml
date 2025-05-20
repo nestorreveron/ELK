@@ -1,0 +1,133 @@
+🧑‍💻 Laboratorio Opcional Avanzado: Análisis avanzado y visualizaciones interactivas en Kibana
+
+📋 Objetivo
+
+Explorar funcionalidades avanzadas de Kibana:
+
+Visualizaciones avanzadas (TSVB, mapas, gauges, etc.)
+
+Uso de filtros y dashboards dinámicos
+
+Uso avanzado de KQL (Kibana Query Language)
+
+Creación de alertas básicas (si la versión de Kibana lo permite)
+
+Personalización e interacción entre visualizaciones
+
+📝 Requisitos previos
+Haber completado el Lab02 (Kibana operativo con datos reales en Elasticsearch).
+
+Acceso al portal web de Kibana desde tu navegador.
+
+⚙️ Paso 1: Crear visualizaciones avanzadas
+A. Time Series Visual Builder (TSVB)
+Ve a Analytics → Visualize Library → Create visualization.
+
+Elige Time Series o TSVB.
+
+Configura el panel:
+
+En Panel options elige el índice.
+
+En Metrics, selecciona una métrica (ejemplo: average, sum, count).
+
+En Data, configura intervalos de tiempo y agrega una moving average o métrica derivada.
+
+Prueba agregando series adicionales para comparar tendencias (por ejemplo, comparación de status:200 vs status:500).
+
+Guarda la visualización como “Time Series Analysis”.
+
+B. Geospatial Maps (si tienes datos geográficos)
+Ve a Visualize Library → Create visualization → Maps.
+
+Elige el índice que contenga datos de geolocalización (geo_point o location).
+
+Crea un mapa de puntos o coropletas:
+
+Por ejemplo, eventos por país, ciudad o coordenadas.
+
+Ajusta capas, estilos y leyendas.
+
+Guarda la visualización como “Geographical Events Map”.
+
+C. Gauges and Goals
+En Create visualization, selecciona Gauge o Goal.
+
+Configura el KPI a monitorear:
+
+Por ejemplo, el porcentaje de logs con status:200 sobre el total.
+
+Define valores mínimos, máximos y umbrales (ejemplo: rojo <95%, amarillo 95-99%, verde >99%).
+
+Guarda como “Uptime Gauge”.
+
+D. Scatterplots o Heatmaps (relaciones complejas)
+Elige Heatmap o Scatterplot.
+
+Visualiza relaciones entre dos campos, por ejemplo:
+
+Cantidad de logs por hora del día y tipo de error.
+
+Relación entre bytes transferidos y código de status.
+
+⚙️ Paso 2: Interactividad y filtros avanzados en dashboards
+Crea un nuevo Dashboard Avanzado.
+
+Añade tus nuevas visualizaciones avanzadas.
+
+Prueba:
+
+Filtrar el dashboard por un campo global (ej: solo una empresa, solo errores).
+
+Usar drilldowns si Kibana lo permite: hacer clic en una barra/área y ver cómo se filtran todos los paneles automáticamente.
+
+Cambiar el rango de fechas global y observar el efecto en las métricas.
+
+⚙️ Paso 3: Uso avanzado de KQL
+Prueba búsquedas con KQL avanzado:
+
+Rango de fechas:
+
+timestamp >= "2024-05-01" AND timestamp <= "2024-05-31"
+Existencia de campos:
+
+_exists_: user_agent AND status: "404"
+Consultas anidadas:
+
+(status: "500" AND extension: "php") OR (bytes > 10000 AND status: "200")
+Observa cómo se afectan dinámicamente todas las visualizaciones del dashboard.
+
+⚙️ Paso 4: Creación de alertas básicas (si tu versión de Kibana lo soporta)
+Ve a Stack Management → Alerts and Actions.
+
+Crea una alerta sobre un índice, por ejemplo:
+
+Enviar alerta cuando el porcentaje de errores (status: 500) supere cierto umbral en los últimos 5 minutos.
+
+Configura la acción: email, log, webhook (según tus permisos).
+
+Observa la integración de alertas en tus dashboards.
+
+⚙️ Paso 5: Exporta, documenta y comparte
+Exporta tu dashboard avanzado como PDF o imagen.
+
+Documenta cada panel: ¿qué visualizas? ¿qué preguntas responde? ¿qué hallazgos detectaste?
+
+Comparte el enlace o archivo exportado con el equipo/instructor.
+
+🚀 Desafío extra (para usuarios avanzados):
+Crea un panel de troubleshooting: Un solo dashboard que te ayude a identificar de inmediato cualquier anomalía en la operación de una aplicación.
+
+Combina métricas de logs y de infraestructura (si tienes métricas en Elasticsearch), cruzando eventos críticos con uso de recursos.
+
+🚮 Limpieza (Opcional)
+Si creaste alertas o dashboards temporales, elimínalos si no los vas a usar.
+
+Recuerda cerrar sesiones y restringir el puerto 5601 si termina la práctica.
+
+📌 Tips avanzados
+Aprovecha los tooltips y documentación de cada visualización en Kibana.
+
+Explora la pestaña Inspect para ver la query subyacente a cada visualización.
+
+Usa la opción de Save as new para experimentar sin perder tus paneles originales.
