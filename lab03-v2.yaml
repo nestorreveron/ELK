@@ -1,0 +1,195 @@
+# 🛠️ Lab Avanzado v2: Procesamiento, Enriquecimiento y Visualización Avanzada de Logs con Fluent Bit y Kibana
+
+## 📋 Objetivo
+
+Desplegar una arquitectura avanzada de procesamiento de logs:
+- Recolección desde múltiples fuentes.
+- Enriquecimiento y parsing estructurado.
+- Envío a múltiples índices de Elasticsearch.
+- Visualización y alertas avanzadas en Kibana.
+
+---
+
+## 📝 Requisitos previos
+
+- Haber completado laboratorios Día 1 y Día 2 (Elasticsearch y Kibana operativo en Azure).
+- Acceso SSH a la VM y acceso web a Kibana.
+
+---
+
+## ⚙️ Paso 1: Crear múltiples fuentes de logs
+
+```bash
+sudo touch /var/log/app1.log /var/log/app2.log
+sudo chmod 666 /var/log/app1.log /var/log/app2.log
+````
+
+#### Generar logs automáticamente para cada app:
+
+```bash
+nohup bash -c 'while true; do echo "{\"timestamp\":\"$(date +%s)\",\"app\":\"app1\",\"env\":\"prod\",\"level\":\"INFO\",\"msg\":\"Valor $(shuf -i 100-200 -n 1)\", \"user\":\"user$(shuf -i 1-3 -n 1)\"}" >> /var/log/app1.log; sleep 3; done' &
+
+nohup bash -c 'while true; do echo "$(date) - app2 [ERROR] metric=$(shuf -i 1-5 -n 1) usuario=user$(shuf -i 4-6 -n 1)" >> /var/log/app2.log; sleep 7; done' &
+```
+
+---
+
+## ⚙️ Paso 2: Instalar Fluent Bit (si no lo tienes)
+
+```bash
+curl https://raw.githubusercontent.com/fluent/fluent-bit/master/install.sh | sh
+```
+
+Verifica:
+
+```bash
+fluent-bit --version
+```
+
+---
+
+## ⚙️ Paso 3: Configuración avanzada de Fluent Bit
+
+Edita `/etc/fluent-bit/fluent-bit.conf`:
+
+```ini
+[SERVICE]
+    Flush        1
+    Log_Level    info
+
+[INPUT]
+    Name   tail
+    Path   /var/log/app1.log
+    Tag    app1
+    Parser json
+
+[INPUT]
+    Name   tail
+    Path   /var/log/app2.log
+    Tag    app2
+    Parser regex_app2
+
+[FILTER]
+    Name     record_modifier
+    Match    app*
+    Record   hostname ${HOSTNAME}
+    Record   lab_version v2
+
+[FILTER]
+    Name   parser
+    Match  app2
+    Key_Name   message
+    Parser     regex_app2
+
+[OUTPUT]
+    Name   es
+    Match  app1
+    Host   localhost
+    Port   9200
+    Index  app1-logs
+
+[OUTPUT]
+    Name   es
+    Match  app2
+    Host   localhost
+    Port   9200
+    Index  app2-logs
+```
+
+Agrega los siguientes parsers a `/etc/fluent-bit/parsers.conf`:
+
+```ini
+[PARSER]
+    Name        json
+    Format      json
+    Time_Key    timestamp
+    Time_Format %s
+
+[PARSER]
+    Name        regex_app2
+    Format      regex
+    Regex       ^(?<date>.+) - app2 \[(?<level>[A-Z]+)\] metric=(?<metric>[0-9]+) usuario=(?<user>.+)$
+    Time_Key    date
+    Time_Format %a %b %d %H:%M:%S %Z %Y
+```
+
+---
+
+## ⚙️ Paso 4: Iniciar Fluent Bit y verificar logs en Elasticsearch
+
+```bash
+sudo fluent-bit -c /etc/fluent-bit/fluent-bit.conf
+```
+
+Verifica el envío:
+
+```bash
+curl -X GET "localhost:9200/app1-logs/_search?pretty"
+curl -X GET "localhost:9200/app2-logs/_search?pretty"
+```
+
+---
+
+## ⚙️ Paso 5: Crear Index Patterns en Kibana
+
+1. Ve a `http://<ip-publica-vm>:5601`
+2. Stack Management > Data Views.
+3. Crea:
+
+   * `app1-logs*`
+   * `app2-logs*`
+
+---
+
+## ⚙️ Paso 6: Visualización avanzada en Kibana
+
+1. Ve a Analytics > Dashboard > Create new.
+2. Añade visualizaciones:
+
+   * **Time series:** logs por tiempo por app.
+   * **Pie chart:** distribución por `user`.
+   * **Bar chart:** conteo por `level`.
+   * **Heatmap:** logs por hostname/hora.
+   * **Table:** logs recientes con campos enriquecidos.
+
+---
+
+## ⚙️ Paso 7: Alertas y KQL avanzados
+
+* **Crear alerta:** Stack Management > Alerts & Actions
+  Alerta sobre `app2-logs` cuando `level: ERROR` > 3 veces/minuto.
+* **Ejemplos de KQL:**
+
+  * `user: "user1" AND level: "ERROR"`
+  * `lab_version: "v2" AND metric >= 3`
+
+---
+
+## 🚀 Desafío extra (opcional)
+
+* Añade un output tipo file o S3.
+* Enriquecer logs con geoip.
+* Ingesta de métricas de sistema (`cpu`, `mem`) con otro input y visualízalas en el dashboard.
+
+---
+
+## 🚮 Limpieza (Opcional)
+
+```bash
+pkill -f "while true; do echo"
+sudo pkill fluent-bit
+```
+
+---
+
+## 📌 Recomendaciones
+
+* Guarda capturas y logs.
+* Comenta diferencias entre parsing avanzado y básico.
+* Reflexiona sobre los beneficios del procesamiento avanzado y visualización real-time.
+
+---
+
+¡Has completado el laboratorio avanzado de procesamiento y visualización de logs multi-fuente con Fluent Bit y Kibana sobre Azure! 🚀
+
+```
