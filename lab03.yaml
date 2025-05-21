@@ -76,47 +76,45 @@ Agrega la siguiente configuración básica:
 
 ```ini
 [INPUT]
-  Name tail
-  Path /var/log/demo.log
-  Tag demo_logs
+  name tail
+  path /var/log/demo.log
+  tag demo_logs
 
 [OUTPUT]
-  Name  es
-  Match demo_logs
-  Host  localhost
-  Port  9200
-  Index fluentbit-demo
+  name es
+  match demo_logs
+  host localhost
+  port 9200
+  index fluentbit-demo
+  generate_ID on
+  logstash_format off
+  suppress_type_name on
+
 ```
 
 Guarda (`Ctrl+X`, `Y`, `Enter`).
 
 ---
 
-## ⚙️ Paso 5: Iniciar FluentBit
+## ⚙️ Paso 5: Iniciar FluentBit y modificar archivo .service
+
+sudo vi /usr/lib/systemd/system/fluent-bit.service
+>> ExecStart=/opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf
+Salir y guardar
+
+
+Y luego ejecutar un ReLoad:
+
+sudo systemctl deamon-reload
+sudo restart fluen-bit
 
 Inicia FluentBit con tu archivo de configuración:
 
 ```bash
-sudo fluent-bit -c /etc/fluent-bit/fluent-bit.conf
+sudo /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf
 ```
 
----
-
 ## ⚙️ Paso 6: Verificación en Elasticsearch
-
-CREAR INDICE MANUAL (NO DEBERIA SER NECESARIO)
-
-curl -X PUT "localhost:9200/fluentbit-demo" -H 'Content-Type: application/json' -d'
-{
-  "mappings": {
-    "properties": {
-      "fecha":    { "type": "date" },
-      "bytes":    { "type": "integer" },
-      "location": { "type": "geo_point" }
-    }
-  }
-}
-'
 
 Confirma que FluentBit envía correctamente logs a Elasticsearch:
 
