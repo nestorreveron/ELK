@@ -61,7 +61,7 @@ Edita `/etc/fluent-bit/fluent-bit.conf`:
     Name   tail
     Path   /var/log/app1.log
     Tag    app1
-    Parser json
+    Parser json2
 
 [INPUT]
     Name   tail
@@ -100,7 +100,7 @@ Agrega los siguientes parsers a `/etc/fluent-bit/parsers.conf`:
 
 ```ini
 [PARSER]
-    Name        json
+    Name        json2
     Format      json
     Time_Key    timestamp
     Time_Format %s
