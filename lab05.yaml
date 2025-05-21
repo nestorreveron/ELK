@@ -1,0 +1,105 @@
+
+## 🏆 **Retos Avanzados: Integraciones Cloud-Native con Dynatrace en Azure**
+
+---
+
+### **1. Integración con Azure Monitor y Log Analytics**
+
+**Objetivo:** Visualizar y correlacionar datos de métricas y logs recolectados por Azure Monitor y Log Analytics directamente desde Dynatrace.
+
+* **Pasos sugeridos:**
+
+  1. En Dynatrace, navega a **Settings > Cloud and virtualization > Azure**.
+  2. Usa el asistente para autorizar tu suscripción de Azure, creando un registro de aplicación (App registration) en Azure AD, y proveyendo el tenant ID, client ID y client secret.
+  3. Selecciona los recursos y servicios a monitorizar (por ejemplo, VMs, App Services, SQL Databases, etc.).
+  4. Espera a que la integración sincronice los recursos.
+  5. En Dynatrace, ve a **Infrastructure** y observa cómo los recursos de Azure se correlacionan con los hosts y servicios donde tienes instalado OneAgent.
+  6. **Explora:** Compara la visualización y las alertas entre Dynatrace y Azure Monitor/Log Analytics para el mismo recurso.
+
+---
+
+### **2. Integración con AKS (Azure Kubernetes Service) y Kubernetes autogestionado en Azure**
+
+**Objetivo:** Monitorear clústeres Kubernetes en Azure (AKS o clusters autogestionados) usando Dynatrace OneAgent Operator, con auto-instrumentación de aplicaciones y visualización completa.
+
+* **Pasos sugeridos:**
+
+  1. Si tienes un clúster AKS (o puedes crear uno pequeño), sigue la [guía oficial de Dynatrace para Kubernetes](https://www.dynatrace.com/support/help/shortlink/kubernetes-operator).
+  2. Instala el Dynatrace OneAgent Operator en el clúster:
+
+     ```bash
+     kubectl create namespace dynatrace
+     kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/latest/download/kubernetes.yaml
+     ```
+  3. Proporciona el API URL y token de Dynatrace (lo obtienes de tu entorno Dynatrace SaaS).
+  4. Valida en Dynatrace cómo aparecen los nodos, pods, namespaces y servicios del cluster de AKS.
+  5. Despliega una app demo (por ejemplo, nginx o una app de ejemplo oficial de Microsoft).
+  6. Observa las métricas, trazas y auto-discovery de microservicios en el panel **Smartscape** de Dynatrace.
+  7. **Extra:** Simula un fallo (por ejemplo, detén un pod o genera alto consumo de recursos) y analiza las alertas generadas.
+
+---
+
+### **3. Integración con Prometheus y Scraping de Métricas Custom en Azure**
+
+**Objetivo:** Que Dynatrace recoja y visualice métricas personalizadas expuestas por aplicaciones o exporters Prometheus desplegados en tus VMs o clúster de AKS en Azure.
+
+* **Pasos sugeridos:**
+
+  1. Despliega un exporter de Prometheus en tu VM o AKS (ejemplo: `node_exporter` o un exporter de tu app).
+
+     ```bash
+     wget https://github.com/prometheus/node_exporter/releases/download/v*/node_exporter-*.linux-amd64.tar.gz
+     tar -xvf node_exporter-*.tar.gz
+     ./node_exporter &
+     ```
+
+     O, en Kubernetes:
+
+     ```bash
+     kubectl apply -f https://raw.githubusercontent.com/prometheus/node_exporter/master/examples/node-exporter-full.yaml
+     ```
+  2. En Dynatrace, ve a **Settings > Cloud and virtualization > Prometheus**.
+  3. Agrega la URL del endpoint Prometheus (por ejemplo, `http://<vm_ip>:9100/metrics` o el endpoint del servicio en AKS).
+  4. Visualiza en Dynatrace cómo aparecen estas métricas (busca por nombre, tipo, y explora gráficos).
+  5. **Extra:** Crea una alerta basada en una métrica de Prometheus (por ejemplo, si la memoria supera cierto umbral).
+
+---
+
+### **4. Integración con OpenTelemetry en Azure**
+
+**Objetivo:** Recibir y analizar datos de trazas, logs o métricas desde aplicaciones instrumentadas con OpenTelemetry y desplegadas en Azure (VMs o AKS).
+
+* **Pasos sugeridos:**
+
+  1. Instrumenta una aplicación demo en Azure (puede ser Node.js, Python, Java, etc.) usando el SDK oficial de OpenTelemetry.
+  2. Configura el agente/collector OpenTelemetry para enviar datos a Dynatrace usando el endpoint OTLP de tu entorno (ver [documentación oficial](https://www.dynatrace.com/support/help/shortlink/otlp-ingest)).
+  3. Despliega la app instrumentada en tu VM o como un pod en AKS.
+  4. Observa en Dynatrace cómo se visualizan las trazas y métricas en Application & Microservices.
+  5. **Extra:** Genera carga en la app y explora los mapas de dependencias y correlaciones en Dynatrace.
+
+---
+
+### **5. Desafío Extra: Automatización IaC en Azure**
+
+**Objetivo:** Automatizar la instalación de Dynatrace OneAgent y la configuración de integraciones en Azure usando Terraform o Bicep.
+
+* **Pasos sugeridos:**
+
+  1. Crea un pequeño script Terraform o plantilla Bicep para desplegar una VM o cluster AKS en Azure.
+  2. Incluye la instalación automática de Dynatrace OneAgent como una extensión de la VM o como DaemonSet en AKS.
+  3. Documenta el flujo, comparte el código fuente y explica cómo se conecta todo a Dynatrace.
+
+---
+
+## 📌 **Entrega sugerida para estos retos**
+
+* Capturas de dashboards, Smartscape, paneles de métricas y alertas en Dynatrace.
+* Ejemplo de archivos de configuración usados en Azure y Dynatrace.
+* Mini resumen sobre el valor agregado de cada integración.
+* Para el reto IaC, incluye el código fuente y guía rápida de uso.
+
+---
+
+¿Quieres un reto aún más técnico sobre logs centralizados, Synthetic Monitoring o Security con Azure y Dynatrace?
+¿O necesitas este contenido en formato Markdown paso a paso para tus estudiantes?
+¡Solo dime!
