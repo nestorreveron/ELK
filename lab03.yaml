@@ -134,8 +134,8 @@ Accede a Kibana desde tu navegador:
 http://<ip-publica-vm>:5601
 ```
 
-* Dirígete a **Stack Management → Data View**.
-* Crea un nuevo data view `fluentbit-demo`.
+* Dirígete a **Stack Management → Data View**. 
+* Crea un nuevo data view `fluentbit-demo` y colocar el Index : f*
 * Explora documentos indexados en **Discover**.
 
 ---
