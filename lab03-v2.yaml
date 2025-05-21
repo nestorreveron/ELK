@@ -118,7 +118,7 @@ Agrega los siguientes parsers a `/etc/fluent-bit/parsers.conf`:
 ## ⚙️ Paso 4: Iniciar Fluent Bit y verificar logs en Elasticsearch
 
 ```bash
-sudo fluent-bit -c /etc/fluent-bit/fluent-bit.conf
+sudo /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf
 ```
 
 Verifica el envío:
