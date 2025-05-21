@@ -105,7 +105,7 @@ Salir y guardar
 
 Y luego ejecutar un ReLoad:
 
-sudo systemctl deamon-reload
+sudo systemctl daemon-reload
 sudo restart fluen-bit
 
 Inicia FluentBit con tu archivo de configuración:
