@@ -104,6 +104,20 @@ sudo fluent-bit -c /etc/fluent-bit/fluent-bit.conf
 
 ## ⚙️ Paso 6: Verificación en Elasticsearch
 
+CREAR INDICE MANUAL (NO DEBERIA SER NECESARIO)
+
+curl -X PUT "localhost:9200/fluentbit-demo" -H 'Content-Type: application/json' -d'
+{
+  "mappings": {
+    "properties": {
+      "fecha":    { "type": "date" },
+      "bytes":    { "type": "integer" },
+      "location": { "type": "geo_point" }
+    }
+  }
+}
+'
+
 Confirma que FluentBit envía correctamente logs a Elasticsearch:
 
 ```bash
