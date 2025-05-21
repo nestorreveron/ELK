@@ -160,7 +160,7 @@ curl -X GET "localhost:9200/app2-logs/_search?pretty"
   Alerta sobre `app2-logs` cuando `level: ERROR` > 3 veces/minuto.
 * **Ejemplos de KQL:**
 
-  * `user: "user1" AND level: "ERROR"`
+  * `user: "user4" AND level: "ERROR"`
   * `lab_version: "v2" AND metric >= 3`
 
 ---
