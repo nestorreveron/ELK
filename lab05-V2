@@ -57,7 +57,7 @@ az role assignment create --assignee $CLIENT_ID --role Reader --scope /subscript
 ```bash
 RG="dynatrace-lab"
 AKS_NAME="dt-aks"
-az group create --name $RG --location eastus
+az group create --name $RG --location spaincentral
 
 az aks create \
   --resource-group $RG \
