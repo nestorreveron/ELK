@@ -125,6 +125,25 @@ kubectl delete pod -l app=nginx
 
 *O usa stress si quieres forzar alertas de CPU/memoria (opcional).*
 
+Crear el archivo pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stress
+  namespace: default
+spec:
+  containers:
+  - name: stress
+    image: polinux/stress
+    command: ["stress"]
+    args: ["--cpu", "4", "--vm", "2", "--vm-bytes", "200M", "--timeout", "120s"]
+    resources:
+      limits:
+        cpu: "2"
+        memory: "256Mi"
+
+kubectl apply -f pod.yaml
 ---
 
 ## 3. **Scraping de métricas Prometheus en VM y AKS**
