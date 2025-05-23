@@ -55,7 +55,7 @@ az role assignment create --assignee $CLIENT_ID --role Reader --scope /subscript
 ### 2.1. **Crear el clúster AKS**
 
 ```bash
-RG="dynatrace-lab"
+RG="USERXX"
 AKS_NAME="dt-aks"
 az group create --name $RG --location spaincentral
 
