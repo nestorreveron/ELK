@@ -1,0 +1,262 @@
+
+# 🏆 Guía Profesional: Integraciones Dynatrace–Azure vía Cloud Shell (Bash paso a paso)
+
+---
+
+## 1. **Integración con Azure Monitor y Log Analytics**
+
+### 1.1. **Registrar la Aplicación en Azure AD**
+
+```bash
+# Crea variables para reutilizar
+RG="dynatrace-lab"
+APP_NAME="dynatrace-integration"
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+TENANT_ID=$(az account show --query tenantId -o tsv)
+
+# Crea la app registration
+az ad app create --display-name $APP_NAME
+
+# Obtén el client_id
+CLIENT_ID=$(az ad app list --display-name $APP_NAME --query "[0].appId" -o tsv)
+
+# Crea el service principal asociado a la app
+az ad sp create --id $CLIENT_ID
+
+# Crea un secreto
+CLIENT_SECRET=$(az ad app credential reset --id $CLIENT_ID --query password -o tsv)
+echo "Client Secret: $CLIENT_SECRET"
+```
+
+### 1.2. **Asigna permisos de lector**
+
+```bash
+az role assignment create --assignee $CLIENT_ID --role Reader --scope /subscriptions/$SUBSCRIPTION_ID
+```
+
+*Nota: Si quieres acceso granular usa `--scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG`*
+
+### 1.3. **Configura la integración en Dynatrace**
+
+* Ve a **Settings > Cloud and virtualization > Azure** en Dynatrace.
+* Ingresa:
+
+  * **Tenant ID:** \$TENANT\_ID
+  * **Client ID:** \$CLIENT\_ID
+  * **Client Secret:** (el que te mostró el comando)
+  * **Subscription ID:** \$SUBSCRIPTION\_ID
+* Sigue el wizard y selecciona recursos a monitorizar.
+* Espera \~10 minutos y valida en Dynatrace en *Infrastructure*.
+
+---
+
+## 2. **Integración con AKS (Azure Kubernetes Service) y Dynatrace OneAgent Operator**
+
+### 2.1. **Crear el clúster AKS**
+
+```bash
+RG="dynatrace-lab"
+AKS_NAME="dt-aks"
+az group create --name $RG --location eastus
+
+az aks create \
+  --resource-group $RG \
+  --name $AKS_NAME \
+  --node-count 2 \
+  --node-vm-size Standard_B2s \
+  --generate-ssh-keys \
+  --enable-addons monitoring
+
+az aks get-credentials --resource-group $RG --name $AKS_NAME
+```
+
+### 2.2. **Instalar Dynatrace Operator y OneAgent**
+
+**Obtén tus tokens y el endpoint en el portal de Dynatrace**.
+
+```bash
+kubectl create namespace dynatrace
+
+kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/latest/download/kubernetes.yaml
+```
+
+```bash
+kubectl -n dynatrace create secret generic dynakube \
+  --from-literal="apiToken=<TU_DT_API_TOKEN>" \
+  --from-literal="dataIngestToken=<TU_DT_INGEST_TOKEN>"
+```
+
+**Crea archivo `dynakube.yaml`** (ajusta tu `apiUrl`):
+
+```yaml
+apiVersion: dynatrace.com/v1beta1
+kind: DynaKube
+metadata:
+  name: dynakube
+  namespace: dynatrace
+spec:
+  apiUrl: https://<TU_ENV>.live.dynatrace.com/api
+  oneAgent:
+    cloudNativeFullStack: {}
+  activeGate:
+    capabilities:
+      - routing
+      - kubernetes-monitoring
+```
+
+```bash
+kubectl apply -f dynakube.yaml
+```
+
+### 2.3. **Desplegar una app demo y probar monitoreo**
+
+```bash
+kubectl create deployment nginx --image=nginx
+kubectl expose deployment nginx --port=80 --type=LoadBalancer
+```
+
+* Observa la integración en Dynatrace > **Kubernetes** o **Smartscape**.
+
+### 2.4. **Simular fallos**
+
+```bash
+kubectl delete pod -l app=nginx
+```
+
+*O usa stress si quieres forzar alertas de CPU/memoria (opcional).*
+
+---
+
+## 3. **Scraping de métricas Prometheus en VM y AKS**
+
+### 3.1. **Desplegar Node Exporter en una VM Linux**
+
+```bash
+VM_NAME="dt-vm"
+VM_USER="azureuser"
+az vm create -g $RG -n $VM_NAME --image UbuntuLTS --admin-username $VM_USER --generate-ssh-keys
+VM_IP=$(az vm show -d -g $RG -n $VM_NAME --query publicIps -o tsv)
+
+# Accede vía SSH
+ssh $VM_USER@$VM_IP
+
+# Dentro de la VM:
+wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
+tar -xvf node_exporter-1.7.0.linux-amd64.tar.gz
+cd node_exporter-1.7.0.linux-amd64
+./node_exporter &
+# El endpoint es http://$VM_IP:9100/metrics
+exit
+```
+
+**Abre el puerto en el NSG (si quieres exponerlo)**
+
+```bash
+az vm open-port -g $RG --name $VM_NAME --port 9100
+```
+
+### 3.2. **En AKS**
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/prometheus/node_exporter/master/examples/node-exporter-full.yaml
+```
+
+### 3.3. **Configura Prometheus en Dynatrace**
+
+* Dynatrace > **Settings > Cloud and virtualization > Prometheus**
+* Agrega endpoint `http://$VM_IP:9100/metrics` o el Service de Kubernetes
+* Dynatrace detecta y grafica las métricas.
+
+---
+
+## 4. **OpenTelemetry en Azure (App Demo)**
+
+### 4.1. **Crear y subir app demo instrumentada (ejemplo: Python Flask)**
+
+```bash
+VM_NAME="otel-vm"
+az vm create -g $RG -n $VM_NAME --image UbuntuLTS --admin-username $VM_USER --generate-ssh-keys
+VM_IP=$(az vm show -d -g $RG -n $VM_NAME --query publicIps -o tsv)
+ssh $VM_USER@$VM_IP
+
+sudo apt-get update && sudo apt-get install -y python3-pip
+pip3 install flask opentelemetry-sdk opentelemetry-exporter-otlp
+
+cat > app.py <<EOF
+from flask import Flask
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+provider = TracerProvider()
+processor = BatchSpanProcessor(
+    OTLPSpanExporter(
+        endpoint="https://<TU_ENV>.live.dynatrace.com/api/v2/otlp/v1/traces",
+        headers=(("Authorization", "Api-Token <TU_TOKEN>"),),
+    )
+)
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+app = Flask(__name__)
+
+@app.route("/")
+def hello():
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_as_current_span("hello-span"):
+        return "Hello OpenTelemetry!"
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+EOF
+
+python3 app.py
+```
+
+* Abre el puerto para acceso externo:
+
+```bash
+az vm open-port -g $RG --name $VM_NAME --port 5000
+```
+
+* Genera tráfico:
+  Accede a http\://\$VM\_IP:5000 desde el navegador.
+
+### 4.2. **Verifica en Dynatrace**
+
+* Dynatrace > *Application & Microservices > Distributed Traces*
+
+---
+
+## 5. **Desafío Extra: Instalar Dynatrace OneAgent en VM desde Cloud Shell**
+
+### 5.1. **Instalar Dynatrace OneAgent en VM Linux**
+
+```bash
+VM_NAME="dt-vm"
+VM_IP=$(az vm show -d -g $RG -n $VM_NAME --query publicIps -o tsv)
+ssh $VM_USER@$VM_IP
+
+# Obtén tu link de instalación desde Dynatrace portal
+wget -O Dynatrace-OneAgent.sh "https://<TU_ENV>.live.dynatrace.com/api/v1/deployment/installer/agent/unix/default/latest?Api-Token=<TOKEN>&arch=x86&flavor=default"
+sudo /bin/sh Dynatrace-OneAgent.sh --set-app-log-content-access=true --set-infra-only=false
+```
+
+* Verifica que la VM aparece en **Hosts** en Dynatrace y que se recogen métricas/logs.
+
+---
+
+## 6. **Recomendaciones finales**
+
+* Usa **Azure Cloud Shell** (Bash) para todos los comandos. Todo se puede hacer vía CLI y SSH.
+* **Guarda logs y pantallazos** de cada integración.
+* Revisa que los recursos estén en la misma región para minimizar latencia y problemas de permisos.
+* Si usas **VMs Ubuntu**, instala dependencias según el ejemplo.
+* **Tokens y URLs** los generas siempre desde el portal de Dynatrace.
+* **No olvides limpiar recursos**:
+
+```bash
+az group delete --name $RG --yes --no-wait
+```
+
