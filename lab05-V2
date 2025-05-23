@@ -5,7 +5,7 @@
 
 ## 1. **Integración con Azure Monitor y Log Analytics**
 
-### 1.1. **Registrar la Aplicación en Azure AD**
+### 1.1. **Registrar la Aplicación en Entra ID**
 
 ```bash
 # Crea variables para reutilizar
