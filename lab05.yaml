@@ -24,7 +24,7 @@
 
 * **Pasos sugeridos:**
 
-  1. Si tienes un clúster AKS (o puedes crear uno pequeño), sigue la [guía oficial de Dynatrace para Kubernetes](https://www.dynatrace.com/support/help/shortlink/kubernetes-operator).
+  1. Si tienes un clúster AKS (o puedes crear uno pequeño), sigue la https://docs.dynatrace.com/docs/ingest-from/microsoft-azure-services/azure-integrations/azure-aks .
   2. Instala el Dynatrace OneAgent Operator en el clúster:
 
      ```bash
