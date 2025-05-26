@@ -74,11 +74,9 @@ Opcion 1:
 
 Prueba de stress desde el kubernetes
 
-1.- kubectl run stress-ng --rm -it --image=alpine --namespace=default -- /bin/sh
+1.- kubectl run stress --rm -it --image=polinux/stress -- /bin/sh
 
 2.-
-
-apk add --no-cache stress
 # Consumir 2 CPUs por 5 minutos:
 stress --cpu 2 --timeout 300
 
