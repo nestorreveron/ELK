@@ -57,6 +57,18 @@ Simular un problema de rendimiento en una VM Azure monitorizada por Dynatrace, o
 
 1. Abre el Administrador de tareas y ejecuta varias instancias de una app que consuma CPU (p. ej., calculadora con operaciones pesadas o un script en bucle).
 
+Opción 1:
+
+Powershell:
+
+while ($true) { [Math]::Sqrt(999999) }
+
+Opción 2: 
+
+https://learn.microsoft.com/en-us/sysinternals/downloads/sysinternals-suite
+
+CPUSTRES.exe
+
 ---
 
 ## ⚙️ Paso 3: Observa la alerta automática en Dynatrace
