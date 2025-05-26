@@ -1,0 +1,193 @@
+# 🏆 **Lab06: Maratón de Observabilidad, AI Ops y Troubleshooting avanzado con Davis AI y Dynatrace (8 bloques intensivos)**
+
+---
+
+## **Objetivo general**
+
+Dominar el uso de Dynatrace y Davis AI para detectar, analizar, correlacionar y remediar incidentes complejos 
+en entornos Azure (VM, redes, AKS, App Services, SQL, Storage, etc.), aplicando prácticas de AI Ops, root cause analysis, 
+generación y consumo de logs, métricas custom y automatización avanzada.
+
+---
+
+## **Estructura sugerida (6+ horas, bloques de \~45 minutos cada uno)**
+
+| Bloque | Enfoque                                                     |
+| ------ | ----------------------------------------------------------- |
+| 1      | Verificación, setup y observabilidad end-to-end             |
+| 2      | Simulación de fallos complejos en infraestructura Azure     |
+| 3      | Fallos en aplicaciones distribuidas (AKS/App Services)      |
+| 4      | Logs avanzados, ingestión, parsing y correlación            |
+| 5      | Métricas custom, Prometheus y auto-alerting                 |
+| 6      | Deep-Dive AI Davis: RCA, topología, anomalías encadenadas   |
+| 7      | Synthetic Monitoring, alertas inteligentes y automatización |
+| 8      | AppSec (si tienes acceso), dashboards y retrospectiva       |
+
+---
+
+## **Paso a paso y retos detallados**
+
+---
+
+### **Bloque 1: Observabilidad y Setup avanzado**
+
+1. **Verifica que Dynatrace OneAgent esté funcionando** en:
+
+   * Todas tus VMs (Linux/Windows)
+   * Todos los nodos AKS
+   * Azure App Services, SQL, Storage
+2. **Confirma integraciones**:
+
+   * Azure Monitor/Log Analytics
+   * Prometheus (AKS/VMs)
+   * Logs custom y rutas de logs extendidas
+3. **Revisa el mapa Smartscape**:
+
+   * Identifica todas las dependencias entre hosts, servicios, procesos, pods y endpoints.
+   * Toma screenshots antes de iniciar los incidentes.
+4. **Revisa el historial de problemas detectados por Davis AI** en Problems > Closed.
+
+---
+
+### **Bloque 2: Simulación de fallos de infraestructura y correlación Davis AI**
+
+#### **Reto 2.1 – Ataques de recursos y red**
+
+* **Genera**: Carga intensiva de CPU, memoria y disco en varias VMs a la vez.
+
+  ```bash
+  sudo apt install stress -y
+  stress --cpu 2 --vm 2 --hdd 1 --timeout 180
+  ```
+* **Simula**: Un corte de red (desconecta NIC, bloquea puertos, o inyecta latencia con tc/iptables).
+* **En AKS**: Simula un nodo no disponible (drain node, apaga una VM de worker).
+
+#### **Qué debe pasar**
+
+* Dynatrace debe levantar múltiples problemas correlacionados.
+* **Davis AI debe identificar la raíz (root cause)**, por ejemplo: "Host unavailable", "Service degradation due to upstream dependency", "Disk IO saturation".
+* **Analiza el "Problem card"**: ¿Qué entidades y relaciones detectó Davis? ¿Qué timeline reconstruyó?
+* **Experimenta**: Haz que dos fallos coincidan en tiempo y revisa si Davis AI los agrupa en un solo incidente.
+
+---
+
+### **Bloque 3: Fallos en aplicaciones distribuidas, microservicios y App Services**
+
+#### **Reto 3.1 – Caída o degradación de microservicios en AKS**
+
+* Escala deployment crítico a 0:
+
+  ```bash
+  kubectl scale deployment <nombre> --replicas=0
+  ```
+* O genera un **CrashLoopBackOff** (cambia la imagen del container, introduce error de config/env).
+* **En AKS**: Crea una NetworkPolicy que bloquee tráfico entre servicios principales.
+* **En App Services**: Aplica throttling o limita el autoscale.
+
+#### **Observa y analiza**
+
+* ¿Qué servicios y endpoints detecta Davis como afectados?
+* ¿Se correlacionan fallos entre pods, servicios, procesos?
+* ¿Cómo reconstruye Davis el timeline? ¿Sugiere root cause en infraestructura, red, o código?
+* Toma screenshots de la "causa raíz", las dependencias y la línea de tiempo.
+
+---
+
+### **Bloque 4: Logs avanzados, ingestión y correlación AI**
+
+#### **Reto 4.1 – Ingesta y parsing de logs críticos**
+
+* Crea un **log custom** con errores en una VM:
+
+  ```bash
+  for i in {1..100}; do echo "ERROR: Simulated app failure at $(date)" >> /var/log/myapplog.log; sleep 3; done
+  ```
+* Asegúrate que Dynatrace recoja y parsee estos logs (verifica configuración en Log Ingestion).
+* **Provoca errores reales** (apaga procesos, simula 502 en nginx).
+* **Revisa en Dynatrace**:
+
+  * ¿Cómo asocia Davis AI los logs a problemas abiertos?
+  * ¿Correlaciona log spikes con incidentes de CPU, memoria o network?
+  * Filtra logs por entidad problemática y muestra evidencia de la correlación AI.
+  * Añade una regla de parsing para un nuevo formato de log.
+
+---
+
+### **Bloque 5: Métricas custom, Prometheus y auto-alerting avanzado**
+
+#### **Reto 5.1 – Ingesta de métricas y auto-alertas Davis AI**
+
+* Expón un endpoint Prometheus en AKS o VM (`node_exporter`, app custom).
+* En Dynatrace: **Agrega endpoint Prometheus** y confirma ingestión de métricas custom.
+* Crea una métrica artificial (ejemplo: errores por minuto, latencia custom, temperatura, etc.)
+* **Induce un spike o degradación** en esa métrica (simula altos errores HTTP o baja tasa de éxito).
+* **Configura auto-alerting Davis AI** sobre la métrica y valida la reacción automática.
+* **¿Davis AI asocia este problema a otros incidentes abiertos?**
+
+---
+
+### **Bloque 6: Deep Dive con Davis AI – Correlación y anomalías encadenadas**
+
+#### **Reto 6.1 – Incidentes encadenados y análisis transversal**
+
+* **Simula** una cadena de fallos:
+
+  * Un pod AKS cae → servicio dependiente falla → API deja de responder → app frontend marca error.
+* **Observa cómo Davis AI correlaciona todo el flujo** (pod, node, service, process, endpoint, app).
+* Abre la "Causa raíz" y lee la explicación AI (puedes usar la opción "Explain with Davis AI").
+* **Genera preguntas a Davis AI** usando la funcionalidad de *Ask Davis* (si tu tenant lo tiene):
+
+  * ¿Cuál fue la causa raíz del spike de errores a las 11:25am?
+  * ¿Qué entidades están correlacionadas con el host xyz?
+  * ¿Cómo afecta este incidente al cumplimiento del SLO X?
+* **Prueba la integración con GPT o LLM si está habilitada**.
+
+---
+
+### **Bloque 7: Synthetic Monitoring, automatización, alertas inteligentes y workflows**
+
+#### **Reto 7.1 – Synthetic, AI y respuesta automática**
+
+* Crea un test Synthetic (single click, browser, o script) sobre endpoint crítico.
+* Induce una caída/interrupción (apaga VM o endpoint).
+* Observa generación de problemas por Synthetic + infraestructura y correlación Davis AI.
+* Configura una alerta avanzada que envíe un webhook a un servicio externo (Teams, Slack, etc).
+* **Automatiza una respuesta**:
+
+  * Crea un Azure Logic App, Runbook o Azure Function que, ante la alerta de Dynatrace, reinicie el recurso fallido (opcional para alumnos avanzados).
+* Revisa qué tan rápido y preciso es el ciclo *Detecta (Davis) → Notifica → Responde → Cierra incidente*.
+
+---
+
+### **Bloque 8: AppSec (opcional), dashboards ejecutivos y retro**
+
+#### **Reto 8.1 – AppSec y seguridad AI-driven (si aplica)**
+
+* Activa Dynatrace Application Security.
+* Simula un problema: expón app vulnerable, ejecuta test de fuzzing o ataque básico (XSS, SQLi).
+* Observa si Davis AI detecta y asocia findings a entidades afectadas.
+* Integra findings en dashboards y SLO de seguridad.
+
+#### **Reto 8.2 – Dashboards y retro de incidentes**
+
+* Crea dashboards por equipo (infra, app, DevOps, negocio) con métricas, problemas AI, SLO, Synthetic.
+* Haz una retrospectiva: ¿qué escenarios cubrió bien Davis? ¿Dónde faltó visibilidad?
+* Presenta las “AI Insights” de Davis a un público no técnico (ejecutivos).
+
+---
+
+## **Entrega**
+
+* Evidencias (capturas, YAML, logs, scripts, dashboards).
+* Un “informe AI Davis” donde cada alumno explique cómo el análisis AI ayudó (o no) en cada caso.
+* Un mini post-mortem de un incidente complejo: incluye timeline, correlaciones, causa raíz, remediación y mejoras propuestas.
+
+---
+
+## **Ideas extra/avanzadas**
+
+* **Custom queries con DQL/Dynatrace Query Language** para encontrar patrones que Davis AI no detectó automáticamente.
+* Simular errores intermitentes y ver si Davis AI los reconoce como *flapping*.
+* Probar los *What-if analysis* o predicciones AI sobre tendencias de recursos (si tienes acceso).
+
+
