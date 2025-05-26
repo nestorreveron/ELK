@@ -69,6 +69,29 @@ https://learn.microsoft.com/en-us/sysinternals/downloads/sysinternals-suite
 
 CPUSTRES.exe
 
+**AKS**
+Opcion 1:
+
+Prueba de stress desde el kubernetes
+
+1.- kubectl run stress-ng --rm -it --image=alpine --namespace=default -- /bin/sh
+
+2.-
+
+apk add --no-cache stress
+# Consumir 2 CPUs por 5 minutos:
+stress --cpu 2 --timeout 300
+
+Opción 2:
+
+Acceder al contenedor NGINX y generar carga desde dentro (si el contenedor tiene bash o sh):
+
+kubectl exec -it <nginx-pod-name> -- /bin/sh
+# (Si tienes Alpine, instala stress si es posible)
+apk add --no-cache stress
+stress --cpu 1 --timeout 120
+
+
 ---
 
 ## ⚙️ Paso 3: Observa la alerta automática en Dynatrace
