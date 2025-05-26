@@ -100,8 +100,11 @@ generación y consumo de logs, métricas custom y automatización avanzada.
 * Crea un **log custom** con errores en una VM:
 
   ```bash
-  for i in {1..100}; do echo "ERROR: Simulated app failure at $(date)" >> /var/log/myapplog.log; sleep 3; done
-  ```
+for i in {1..100}; do
+  echo "ERROR: Simulated app failure at $(date)" | sudo tee -a /var/log/myapplog.log
+  sleep 3
+done
+
 * Asegúrate que Dynatrace recoja y parsee estos logs (verifica configuración en Log Ingestion).
 * **Provoca errores reales** (apaga procesos, simula 502 en nginx).
 * **Revisa en Dynatrace**:
