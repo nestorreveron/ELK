@@ -136,7 +136,7 @@ sudo systemctl status node_exporter
 
 Prueba:
 `curl http://localhost:9100/metrics`
-Agrega el target en `prometheus.yml`:
+Agrega el target en `prometheus.yml`: sudo vi /etc/systemd/system/prometheus.service
 
 ```yaml
   - job_name: 'linux-vms'
