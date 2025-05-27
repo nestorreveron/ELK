@@ -185,7 +185,7 @@ curl http://localhost:9090 (abrir en otra pestaña)
 helm install grafana grafana/grafana --namespace monitoring --set adminPassword='GrafanaLab123!' --set persistence.enabled=false
 kubectl get pods -n monitoring
 kubectl port-forward -n monitoring svc/grafana 3000:80
-# http://localhost:3000  (admin/GrafanaLab123!)
+curl -u admin:GrafanaLab123! http://localhost:3000
 ```
 
 ### 3.4. Validar Exporters y Metrics
