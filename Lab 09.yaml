@@ -40,8 +40,8 @@ Contenido:
 
 ```ini
 [default]
-aws_access_key_id = TU_ACCESS_KEY
-aws_secret_access_key = TU_SECRET_KEY
+aws_access_key_id = AKIAZTUIM7RWTIZDV4LI
+aws_secret_access_key = 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
 region = us-east-1
 ```
 
