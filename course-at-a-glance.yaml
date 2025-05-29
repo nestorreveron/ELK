@@ -1,0 +1,88 @@
+
+---
+
+## 🗺️ Course-at-a-glance
+
+| Block                                    | Days                                                                                                   | Focus                                                                                                                                                                                                                                                             | Core Labs / Assets                                                                                                                                                                             |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. ELK Stack**                         | **Day 1 – Elastic**<br>**Day 2 – Kibana**<br>**Day 3 – Log Ingestion**                                 | • Elasticsearch fundamentals (clusters, shards, inverted index)  → *PDF/Slide set “EFK\_1” & “Intro Elasticsearch”*<br>• Kibana dashboards & KQL   → *Slides 55-70, 69-83*<br>• Logstash vs FluentD vs Fluent Bit; end-to-end pipeline (Fluent Bit → ES → Kibana) | **Lab-01** Install ES locally & CRUD<br>**Lab-02** Build dashboards on sample data<br>**Lab-03** Deploy demo app, ship logs with Fluent Bit                                                    |
+| **2. Dynatrace**                         | **Day 4 – Platform tour**<br>**Day 5 – Ingest & OneAgent**<br>**Day 6 – Troubleshooting & AI (Davis)** | • SaaS vs Managed, entity model, Smartscape<br>• OneAgent + ActiveGate (custom log ingest, RUM, synthetics)<br>• Data Explorer / USQL, Davis root-cause AI, SLOs                                                                                                  | **Lab-04** Deploy OneAgent on Kubernetes sandbox, explore topology<br>**Lab-05** Trigger performance issue, observe Davis problem card                                                         |
+| **3. Cloud & Open-source Observability** | **Day 7 – Prometheus + Grafana**<br>**Day 8 – Azure Monitor**<br>**Day 9 – AWS CloudWatch**            | • Prometheus architecture, PromQL, Grafana dashboards & alerts (K8s focus)<br>• Log Analytics workspace, Kusto queries, workbook dashboards, alert rules<br>• CloudWatch metrics/logs, Contributor Insights, alarms, X-Ray traces                                 | **Lab-06** Install kube-prom-stack, build K8s dashboard<br>**Lab-07** Push VM logs to Log Analytics, alert on CPU<br>**Lab-08** Monitor Lambda + RDS with CloudWatch, create alarm & dashboard |
+
+---
+
+## Detailed daily breakdown (+ slide/lab mapping)
+
+### **Day 1 — Introduction & Fundamentals of Elasticsearch**
+
+| Slot        | Topic                                                                                  | Slide Assets                             |
+| ----------- | -------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 08:20-09:00 | Course kickoff & goals                                                                 | *Dynatrace ELK Prometheos Temarios.docx* |
+| 09:00-10:30 | Clusters, nodes, specialised roles (master, data-hot/warm/cold, ingest, ML, transform) | *EFK\_1 slides 15-23*                    |
+| 10:45-12:00 | Shards, replicas, inverted index, mapping basics                                       | *EFK\_1 slides 24-34, 38-49*             |
+| 13:00-14:15 | CRUD & simple REST calls                                                               | *EFK\_1 slides 50-54*                    |
+| 14:15-15:00 | **Lab-01** – Local ES install, index a dataset, query with Dev Tools Console           | *Intro Elasticsearch.pptx (lab section)* |
+
+*(repeat same table idiom for other days if you need print-outs)*
+
+### **Day 2 — Visualising with Kibana**
+
+* Slides 55-70 (why visualisation, basic charts)
+* Slides 70-83 (KQL deep-dive, TSVB, geo, gauges)
+* **Lab-02**: build interactive dashboard on Apache logs, try KQL range & wildcard queries
+
+### **Day 3 — Log Ingestion pipelines**
+
+* Compare Logstash, FluentD, Fluent Bit (slides 84-96)
+* Build real pipeline: k8s Fluent Bit DaemonSet → ES → Kibana dashboard
+* **Lab-03**: deploy mock e-commerce app (slides 111-115) and observe logs
+
+### **Days 4-6 — Dynatrace track**
+
+*(use Dynatrace SaaS trial; OneAgent helm chart for k8s)*
+
+* Day 4 slides: platform overview, Smartscape, entity types
+* Day 5: install OneAgent + ActiveGate, custom log ingest, RUM
+* Day 6: Data Explorer, problems, Davis AI; create SLO, build alerting workflow
+* Labs 04-05 already mapped above.
+
+### **Days 7-9 — Prometheus / Azure / AWS**
+
+* Day 7: kube-prom-stack install, PromQL queries, Grafana templating
+* Day 8: Azure Monitor workbook, Kusto basics, set alert rule
+* Day 9: Collect metrics & logs in CloudWatch, alarm on latency, integrate with ELK or Dynatrace (optional)
+
+---
+
+## 🎯 Learning outcomes (per block)
+
+1. **ELK** – students can stand-up ES cluster, ship logs with Fluent Bit, craft KQL and build Kibana dashboards.
+2. **Dynatrace** – deploy OneAgent, navigate Smartscape, create dashboards, leverage Davis to triage a performance incident.
+3. **Observability** – instrument workloads with Prometheus/Grafana, Azure Monitor and CloudWatch, compare strengths and when to use which.
+
+---
+
+## 🧩 Reusable assets & links
+
+| Asset                                   | File / URL                                                                                                 | Notes                               |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Slide deck – Elasticsearch fundamentals | *Introduction and Fundamentals of Elasticsearch.pptx*                                                      | Day 1 theory                        |
+| Full EFK mega-deck                      | *EFK\_1.pdf*                                                                                               | Node roles, shards, KQL, Fluent Bit |
+| 9-day syllabus (Spanish)                | *Dynatrace ELK Prometheos Temarios.docx*                                                                   | Timing blocks                       |
+| Demo app + Fluent Bit charts            | Slides 111-120                                                                                             | Use as Day-3 + Day-7 playground     |
+| Dynatrace docs                          | [https://docs.dynatrace.com/](https://docs.dynatrace.com/)                                                 |                                     |
+| kube-prom-stack helm                    | [https://github.com/prometheus-community/helm-charts](https://github.com/prometheus-community/helm-charts) |                                     |
+
+---
+
+## Next steps / optional add-ons
+
+* **Certification pointers** – Add links to Elastic Certified Engineer or Dynatrace Associate exams for learners who want credentials.
+* **Hybrid & Elastic Cloud** – You have slides 121-126; could be an evening bonus session on managed offerings and cost modelling.
+* **Assessments** – Quick quizzes at the end of each block (5-10 Qs) reinforce key concepts.
+
+---
+
+### Anything you’d like changed?
+
+Just tell me which section or timing you’d like adjusted (e.g., make ELK four days, fold Fluent Bit into Day 1, etc.), and I can update the schedule, labs or even generate step-by-step lab guides/snippets.
