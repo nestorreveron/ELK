@@ -1,0 +1,233 @@
+## 🔧 PASOS PARA INSTALAR AWS CLOUDWATCH AGENT EN UNA AZURE VM (Linux)
+
+### 🧱 Requisitos previos
+
+* Tener **una instancia de Azure VM con Ubuntu o Amazon Linux**.
+* Tener configuradas **credenciales de AWS (access key y secret)** con permisos para `cloudwatch:PutMetricData` y `ssm:*` (preferiblemente admin para pruebas).
+* Tener el puerto **443** habilitado en la NSG para salida a internet (necesario para contactar a AWS CloudWatch y SSM).
+
+---
+
+## 🚀 Paso 1: Instalar el agente de CloudWatch
+
+### 🔹 1.1 Instala el agente desde el repositorio oficial
+
+#### En **Ubuntu**:
+
+```bash
+wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+sudo dpkg -i amazon-cloudwatch-agent.deb
+```
+
+#### En **Amazon Linux 2** (o derivados RedHat):
+
+```bash
+sudo yum install -y https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
+```
+
+---
+
+## 🔑 Paso 2: Configurar credenciales AWS
+
+Si estás en Azure, debes crear manualmente un archivo de credenciales de AWS (si no usas un role EC2, que no aplica aquí).
+
+```bash
+mkdir ~/.aws
+nano ~/.aws/credentials
+```
+
+Contenido:
+
+```ini
+[default]
+aws_access_key_id = TU_ACCESS_KEY
+aws_secret_access_key = TU_SECRET_KEY
+region = us-east-1
+```
+
+---
+
+## 🛠️ Paso 3: Crear archivo de configuración del agente
+
+Puedes crear un archivo mínimo de configuración en `/opt/aws/amazon-cloudwatch-agent/bin/config.json`. Aquí un ejemplo para monitorizar memoria, CPU y disco:
+
+```bash
+sudo nano /opt/aws/amazon-cloudwatch-agent/bin/config.json
+```
+
+```json
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "root"
+  },
+  "metrics": {
+    "namespace": "AzureLinuxVM",
+    "append_dimensions": {
+      "InstanceId": "Azure-VM-Manual"
+    },
+    "metrics_collected": {
+      "cpu": {
+        "measurement": ["cpu_usage_idle", "cpu_usage_iowait"],
+        "metrics_collection_interval": 60
+      },
+      "mem": {
+        "measurement": ["mem_used_percent"]
+      },
+      "disk": {
+        "measurement": ["used_percent"],
+        "resources": ["/"]
+      }
+    }
+  }
+}
+```
+
+---
+
+## ▶️ Paso 4: Iniciar el agente
+
+```bash
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json \
+  -s
+```
+
+---
+
+## 📈 Paso 5: Verifica que se estén enviando métricas
+
+En AWS:
+
+1. Ve a **CloudWatch > Metrics**.
+2. Busca el **namespace “AzureLinuxVM”** (según tu config).
+3. Ahí deberías ver CPU, memoria, disco.
+
+---
+
+## 🧪 Extra: Para ver logs del agente
+
+```bash
+sudo tail -f /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log
+```
+
+
+********************************************************************************************************************
+
+
+## 🪟 Instalar AWS CloudWatch Agent en una Azure VM con Windows Server
+
+---
+
+### 📋 Requisitos previos
+
+* Windows Server 2016, 2019 o 2022 en Azure.
+* Credenciales AWS válidas (Access Key y Secret) con permisos para `cloudwatch:PutMetricData` y `logs:CreateLogStream`, etc.
+* Acceso a Internet (salida por el puerto 443).
+* Powershell como administrador.
+
+---
+
+## ✅ Paso 1: Descargar e instalar el agente
+
+1. Abre PowerShell **como administrador**.
+2. Ejecuta:
+
+```powershell
+Invoke-WebRequest -Uri https://s3.amazonaws.com/amazoncloudwatch-agent/windows/amd64/latest/AmazonCloudWatchAgent.zip -OutFile "C:\AmazonCloudWatchAgent.zip"
+Expand-Archive -Path "C:\AmazonCloudWatchAgent.zip" -DestinationPath "C:\AmazonCloudWatch"
+cd C:\AmazonCloudWatch
+.\install.ps1
+```
+
+Esto instalará el agente como servicio en el sistema.
+
+---
+
+## 🔑 Paso 2: Configurar credenciales AWS
+
+1. Abre PowerShell y crea el archivo de credenciales:
+
+```powershell
+mkdir "$HOME\.aws"
+notepad "$HOME\.aws\credentials"
+```
+
+2. Añade:
+
+```
+[default]
+aws_access_key_id = TU_ACCESS_KEY
+aws_secret_access_key = TU_SECRET_KEY
+region = us-east-1
+```
+
+---
+
+## 🛠️ Paso 3: Crear archivo de configuración del agente
+
+Ejecuta:
+
+```powershell
+notepad "C:\ProgramData\Amazon\AmazonCloudWatchAgent\config.json"
+```
+
+Y pega el siguiente contenido de ejemplo:
+
+```json
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "Administrator"
+  },
+  "metrics": {
+    "namespace": "AzureWindowsVM",
+    "append_dimensions": {
+      "InstanceId": "Azure-Windows-VM"
+    },
+    "metrics_collected": {
+      "LogicalDisk": {
+        "measurement": [ "% Free Space", "Free Megabytes" ],
+        "metrics_collection_interval": 60,
+        "resources": [ "*" ]
+      },
+      "Memory": {
+        "measurement": [ "% Committed Bytes In Use" ],
+        "metrics_collection_interval": 60
+      },
+      "Processor": {
+        "measurement": [ "% Idle Time", "% User Time", "% Processor Time" ],
+        "metrics_collection_interval": 60,
+        "resources": [ "*" ]
+      }
+    }
+  }
+}
+```
+
+---
+
+## ▶️ Paso 4: Iniciar el agente
+
+Ejecuta desde PowerShell:
+
+```powershell
+cd "C:\Program Files\Amazon\AmazonCloudWatchAgent\"
+.\amazon-cloudwatch-agent-ctl.ps1 -a fetch-config -m ec2 -c file:"C:\ProgramData\Amazon\AmazonCloudWatchAgent\config.json" -s
+```
+
+Esto carga la configuración y arranca el servicio.
+
+---
+
+## 🔍 Paso 5: Verifica
+
+1. Ve a **CloudWatch > Metrics**.
+2. Busca el namespace `AzureWindowsVM`.
+3. Verifica CPU, memoria y disco.
+
+---
+
+¿Deseas que también se envíen logs (ej. `System`, `Application`, o archivos `.log`) a CloudWatch Logs? Te puedo dar ese bloque adicional si lo necesitas.
