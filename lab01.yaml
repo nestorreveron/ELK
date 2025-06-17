@@ -199,7 +199,49 @@ Descargar en el linux en archivo json:
 
 2.- sudo apt install python3-pip -y
 
-3.- 
+3.- sudo vi transform_to_bulk.py
+
+4.- 
+
+```
+import json
+
+input_json_file = "datos_cnmc.json"  # Nombre del archivo JSON descargado
+output_bulk_file = "datos_cnmc_bulk.json" # Nombre del archivo de salida para la API Bulk
+index_name = "datos_consumo_energia"  # El nombre del índice en Elasticsearch donde se guardarán los datos
+
+try:
+    with open(input_json_file, 'r', encoding='utf-8') as f_in:
+        data = json.load(f_in) # Carga todo el array JSON
+except json.JSONDecodeError as e:
+    print(f"Error al decodificar JSON: {e}")
+    print("Asegúrate de que el archivo es un JSON válido o un array JSON.")
+    exit(1)
+
+if not isinstance(data, list):
+    print("El archivo JSON no es un array de objetos. Ajusta el script si es un solo objeto o JSON Lines.")
+    # Si fuera JSON Lines (un objeto JSON por línea), el proceso sería diferente
+    # En ese caso, leerías línea por línea y solo añadirías la línea de acción.
+    exit(1)
+
+with open(output_bulk_file, 'w', encoding='utf-8') as f_out:
+    for i, doc in enumerate(data):
+        # Línea de metadatos para la acción de indexación
+        # Opcional: si tus documentos tienen un campo 'id' que quieres usar como _id en ES,
+        # puedes cambiar `{"index": {"_index": index_name}}` a `{"index": {"_index": index_name, "_id": doc.get('id')}}`
+        f_out.write(json.dumps({"index": {"_index": index_name}}) + "\n")
+        # Línea del documento JSON real
+        f_out.write(json.dumps(doc) + "\n")
+
+print(f"Archivo '{input_json_file}' transformado a '{output_bulk_file}' para Elasticsearch Bulk API.")
+print(f"Los datos se indexarán en el índice '{index_name}'.")
+```
+
+5.- 
+
+
+
+
 
 ---
 
