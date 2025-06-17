@@ -201,7 +201,9 @@ Descargar en el linux en archivo json:
 
 3.- sudo vi transform_to_bulk.py
 
-4.- 
+4.- Crea el script de transformación:
+
+Crea un archivo llamado transform_to_bulk.py en tu VM
 
 ```
 import json
