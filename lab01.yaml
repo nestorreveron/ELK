@@ -213,7 +213,7 @@ output_bulk_file = "datos_cnmc_bulk.json" # Nombre del archivo de salida para la
 index_name = "datos_consumo_energia"  # El nombre del índice en Elasticsearch donde se guardarán los datos
 
 try:
-    with open(input_json_file, 'r', encoding='utf-8') as f_in:
+    with open(input_json_file, 'r', encoding='utf-8-sig') as f_in:
         data = json.load(f_in) # Carga todo el array JSON
 except json.JSONDecodeError as e:
     print(f"Error al decodificar JSON: {e}")
