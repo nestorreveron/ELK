@@ -249,7 +249,9 @@ curl -X POST "localhost:9200/_bulk?pretty" \
      -H 'Content-Type: application/x-ndjson' \
      --data-binary @datos_cnmc_bulk.json
 
+7.- Paso 4: Verificar los datos en Elasticsearch
 
+curl -X GET "localhost:9200/datos_consumo_energia/_search?pretty&size=5"
 
 ---
 
