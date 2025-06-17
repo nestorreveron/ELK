@@ -192,6 +192,14 @@ curl -X POST "localhost:9200/mi_indice/_update/<document_id>" -H 'Content-Type: 
 ```bash
 curl -X DELETE "localhost:9200/mi_indice/_doc/<document_id>"
 ```
+OPCIONAL:
+
+Descargar en el linux en archivo json:
+1.- wget https://catalogodatos.cnmc.es/dataset/c5037bec-4e66-4bfb-a416-03cad20c35d4/resource/34e8a60e-a91d-4a11-ad15-1cad0c3f15a9/download/ds_3294_1.json -O datos_cnmc.json 
+
+2.- sudo apt install python3-pip -y
+
+3.- 
 
 ---
 
