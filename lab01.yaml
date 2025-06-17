@@ -242,7 +242,12 @@ print(f"Los datos se indexarán en el índice '{index_name}'.")
 5.- Ejecuta el script de transformación
 python3 transform_to_bulk.py
 
+6.- Paso 3: Importar los datos a Elasticsearch usando curl
+Ahora que tienes el archivo en el formato NDJSON, puedes usar curl para enviarlo a tu instancia de Elasticsearch.
 
+curl -X POST "localhost:9200/_bulk?pretty" \
+     -H 'Content-Type: application/x-ndjson' \
+     --data-binary @datos_cnmc_bulk.json
 
 
 
