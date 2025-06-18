@@ -74,7 +74,7 @@ http://<ip-publica-vm>:5601
 ## ⚙️ Paso 4: Crear índice en Kibana
 
 * Accede a Kibana desde tu navegador.
-* Ve a **Stack Management → Data → Index Patterns**.
+* Ve a **Stack Management → Kibana → Data View**.
 * Click en **Create Index Pattern**.
 * Escribe el nombre del índice creado el día anterior (ej. `mi_indice`) y haz clic en **Next Step**.
 * Selecciona el campo de tiempo si aplica, o **skip** si no lo tienes.
