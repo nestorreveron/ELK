@@ -87,6 +87,7 @@ Edita `/etc/fluent-bit/fluent-bit.conf`:
     Host   localhost
     Port   9200
     Index  app1-logs
+    suppress_type_name on
 
 [OUTPUT]
     Name   es
@@ -94,6 +95,7 @@ Edita `/etc/fluent-bit/fluent-bit.conf`:
     Host   localhost
     Port   9200
     Index  app2-logs
+    suppress_type_name on
 ```
 
 Agrega los siguientes parsers a `/etc/fluent-bit/parsers.conf`:
