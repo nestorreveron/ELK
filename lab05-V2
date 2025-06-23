@@ -230,13 +230,7 @@ VM_NAME="otel-vm-sunombre"
 VM_USER=kyndryl
 RG=user0x
 
-az vm create \
-  --resource-group $RG \
-  --name $VM_NAME \
-  --image Ubuntu2204 \
-  --admin-username $VM_USER \
-  --admin-password 'Kyndryl1234*' \
-  --authentication-type password
+az vm create --resource-group $RG --name $VM_NAME --image Ubuntu2204 --admin-username $VM_USER --admin-password 'Kyndryl1234*' --authentication-type password
 
 VM_IP=$(az vm show -d -g $RG -n $VM_NAME --query publicIps -o tsv)
 
