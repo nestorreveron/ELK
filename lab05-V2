@@ -226,9 +226,19 @@ kubectl apply -f https://raw.githubusercontent.com/prometheus/node_exporter/mast
 ### 4.1. **Crear y subir app demo instrumentada (ejemplo: Python Flask)**
 
 ```bash
-VM_NAME="otel-vm"
-az vm create -g $RG -n $VM_NAME --image UbuntuLTS --admin-username $VM_USER --generate-ssh-keys
+VM_NAME="otel-vm-sunombre"
+RG=user0x
+
+az vm create \
+  --resource-group $RG \
+  --name $VM_NAME \
+  --image Ubuntu2204 \
+  --admin-username $VM_USER \
+  --admin-password 'Kyndryl1234*' \
+  --authentication-type password
+
 VM_IP=$(az vm show -d -g $RG -n $VM_NAME --query publicIps -o tsv)
+
 ssh $VM_USER@$VM_IP
 
 sudo apt-get update && sudo apt-get install -y python3-pip
