@@ -227,6 +227,7 @@ kubectl apply -f https://raw.githubusercontent.com/prometheus/node_exporter/mast
 
 ```bash
 VM_NAME="otel-vm-sunombre"
+VM_USER=kyndryl
 RG=user0x
 
 az vm create \
