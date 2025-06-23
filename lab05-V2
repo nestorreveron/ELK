@@ -144,6 +144,39 @@ spec:
         memory: "256Mi"
 
 kubectl apply -f pod.yaml
+
+***
+
+Crear archivo deplystress.yaml
+
+Deployment de stress
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-load
+spec:
+  replicas: 4  # Puedes subir esto según los recursos
+  selector:
+    matchLabels:
+      app: stress
+  template:
+    metadata:
+      labels:
+        app: stress
+    spec:
+      containers:
+        - name: stress
+          image: polinux/stress
+          command: ["stress"]
+          args: ["--cpu", "4", "--vm", "2", "--vm-bytes", "200M", "--timeout", "240s"]
+          resources:
+            limits:
+              cpu: "2"
+              memory: "1Gi"
+---
+
+kubectl apply -f deplystress.yaml
 ---
 
 ## 3. **Scraping de métricas Prometheus en VM y AKS**
