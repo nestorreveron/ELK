@@ -693,3 +693,27 @@ If you would like to share any feedback, suggestions, or corrections, please pro
 Additional resources
 AWS Systems Manager user guide
 CloudWatch metrics available for Amazon EC2 instances
+
+
+
+
+
+******
+
+AgentConfigFile
+Standard
+StringList
+Wed, 25 Jun 2025 07:49:20 GMT
+
+description:
+a configuration file to configure the agent used in the lab
+
+standar
+
+value
+
+{ "agent": { "metrics_collection_interval": 60, "run_as_user": "cwagent" }, "metrics": { "append_dimensions": { "AutoScalingGroupName": "${aws:AutoScalingGroupName}", "ImageId": "${aws:ImageId}", "InstanceId": "${aws:InstanceId}", "InstanceType": "${aws:InstanceType}" }, "metrics_collected": { "disk": { "measurement": [ "used_percent" ], "metrics_collection_interval": 60, "resources": [ "*" ] }, "mem": { "measurement": [ "mem_used_percent" ], "metrics_collection_interval": 60 } } } }
+
+
+
+
