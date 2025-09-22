@@ -113,7 +113,7 @@ Añade/modifica:
 ```yaml
 network.host: 0.0.0.0
 http.port: 9200
-discovery.type: single-node
+discovery.type: single-node (No colocarlo)
 xpack.security.enabled: false
 ```
 
@@ -167,7 +167,7 @@ curl -X PUT "localhost:9200/mi_indice"
 curl -X POST "localhost:9200/mi_indice/_doc/" -H 'Content-Type: application/json' -d'
 {
   "curso": "Elasticsearch",
-  "empresa": "Kyndryl",
+  "empresa": "SELAE",
   "duracion": "2 horas"
 }'
 ```
