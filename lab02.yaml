@@ -102,7 +102,7 @@ Puedes insertar documentos manualmente para pruebas rápidas:
 curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
 {
   "curso": "ELK Básico",
-  "empresa": "Kyndryl",
+  "empresa": "SELAE",
   "duracion": 6,
   "fecha": "2024-05-19T10:00:00Z",
   "status": "200"
@@ -173,7 +173,7 @@ A. Prepara tu dataset en formato “NDJSON”
 (Ejemplo, cada línea: acción y documento)
 
 { "index": {} }
-{ "curso": "ELK Básico", "empresa": "Kyndryl", "duracion": 6, "fecha": "2024-05-19T10:00:00Z", "status": "200" }
+{ "curso": "ELK Básico", "empresa": "SELAE", "duracion": 6, "fecha": "2024-05-19T10:00:00Z", "status": "200" }
 { "index": {} }
 { "curso": "Kubernetes", "empresa": "Microsoft", "duracion": 8, "fecha": "2024-05-18T11:00:00Z", "status": "404" }
 ...
@@ -373,7 +373,7 @@ Agregar datos para los KQL:
 curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
 {
   "curso": "ELK Básico",
-  "empresa": "Kyndryl",
+  "empresa": "SELAE",
   "duracion": 12,
   "fecha": "2024-05-19T10:00:00Z",
   "status": "200",
@@ -393,7 +393,7 @@ curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json'
 curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
 {
   "curso": "Azure Monitor",
-  "empresa": "Kyndryl",
+  "empresa": "SELAE",
   "duracion": 10,
   "fecha": "2024-05-17T09:00:00Z",
   "status": "200",
@@ -413,7 +413,7 @@ curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json'
 curl -X POST "localhost:9200/mi_indice/_doc" -H 'Content-Type: application/json' -d'
 {
   "curso": "Observabilidad",
-  "empresa": "Kyndryl",
+  "empresa": "SELAE",
   "duracion": 14,
   "fecha": "2024-05-15T15:00:00Z",
   "status": "500",
@@ -427,7 +427,7 @@ Ejemplos:
 * Filtrar por un valor específico:
 
 ```kql
-empresa: "Kyndryl"
+empresa: "SELAE"
 ```
 
 * Rango numérico:
