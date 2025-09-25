@@ -1,1 +1,296 @@
+# Laboratorio: Elastic Cloud en Microsoft Azure (guía paso a paso)
+
+> **Objetivo**
+> Desplegar un clúster administrado de **Elastic Cloud** sobre **Microsoft Azure**, asegurar el acceso, **ingestar** datos desde VM y servicios de Azure, **visualizar** y **alertar**, y dejar configurada una política básica de ciclo de vida (retención/costes).
+> Esta guía está escrita para un equipo técnico con conocimientos básicos de Azure.
+
+---
+
+## 0) Arquitectura (alto nivel)
+
+* **Elastic Cloud (en Azure)**: despliegue gestionado por Elastic, con nodos en tu suscripción de Elastic (no en tu suscripción Azure).
+* **Acceso**: público con IP allowlist o **Private Link (opcional)**.
+* **Ingesta**:
+
+  * **Elastic Agent** en VMs/containers (Logs, Métricas, APM, Security).
+  * **Integración Azure** (pull vía APIs de Monitor/Graph) para métricas/plataforma.
+* **Almacenamiento**: data tiers (hot / warm / cold) y snapshots en Azure (gestionado por Elastic).
+* **Visualización/alertas**: Kibana, Reglas, Connectores (email, Teams, etc.).
+
+---
+
+## 1) Requisitos previos
+
+* **Cuenta Azure** con permisos de *Owner* o *Contributor* sobre una suscripción de pruebas.
+* **Cuenta Elastic Cloud** (puede ser prueba). Alternativas:
+
+  * **Azure Marketplace – “Elastic on Microsoft Azure”** (recomendado para facturación unificada).
+  * **elastic.co/cloud** (facturación con Elastic).
+* **Herramientas opcionales**:
+
+  * **Azure CLI** (`az`) si vas a crear una VM de demo por línea de comandos.
+  * SSH para conectarte a la VM Linux de demo.
+
+---
+
+## 2) Crear el despliegue de Elastic en Azure
+
+### Opción A: Azure Marketplace (recomendado)
+
+1. Entra a **Azure Portal** → **Create a resource** → busca **Elastic** (Elastic on Microsoft Azure).
+2. Selecciona **Suscripción**, **Resource group** y **Región** (elige la más cercana; p. ej. `East US 2`, `West Europe`).
+3. Completa el onboarding (se abrirá el asistente de Elastic Cloud con facturación vía Azure).
+4. En el formulario de **Create deployment**:
+
+   * **Cloud provider**: Azure (ya fijado).
+   * **Region**: tu región elegida.
+   * **Version**: la más reciente estable.
+   * **Use case template**: “General purpose” o “Observability” (ambas sirven).
+   * **Size**: empieza con tamaño pequeño (p. ej. 2–4 GB RAM para hot).
+   * Activa **Autoscaling** si quieres que el clúster crezca automáticamente.
+5. Crea el despliegue y **guarda**:
+
+   * **Cloud ID**
+   * **Usuario admin** y **password** de **Kibana/Elasticsearch** (Elastic te lo muestra una vez).
+   * URL de **Kibana**.
+
+### Opción B: Elastic Cloud (elastic.co)
+
+1. Ve a **[https://cloud.elastic.co](https://cloud.elastic.co)** → **Create deployment**.
+2. Elige **Azure** como proveedor, tu **región**, plantilla y tamaño.
+3. Continúa como en la opción A.
+
+> ⏱️ **Tiempo**: ~10–15 min hasta que el despliegue quede “Healthy”.
+
+---
+
+## 3) Asegurar el acceso
+
+### 3.1 IP allowlist (rápido)
+
+1. En **cloud.elastic.co** → tu **Deployment** → **Security** → **Traffic filters**.
+2. Crea un filtro **IP-based** y añade las IP públicas desde donde se conectará tu equipo.
+3. **Attach** el filtro al deployment.
+
+### 3.2 Private Link (opcional, producción)
+
+* Requiere crear **Private Endpoints** en tu VNet y aprobar desde **Elastic Cloud** (tráfico privado L3).
+* Pasos de alto nivel:
+
+  1. En Azure, crea **Private Endpoint** para **Elasticsearch** y otro para **Kibana** (servicios de Elastic).
+  2. En **Elastic Cloud**, genera el **Private Link service alias** y **aprueba** las solicitudes.
+  3. Verifica resolución DNS interna y acceso privado.
+* Úsalo cuando tus cargas **no** deben salir a internet.
+
+---
+
+## 4) Primer acceso a Kibana
+
+1. Abre la **URL de Kibana** (desde el portal de Elastic Cloud).
+2. Accede con **usuario** y **password** generados.
+3. Cambia tu **password** de admin y crea usuarios/roles si lo deseas:
+
+   * **Stack Management** → **Security** → Users/Roles.
+4. Opcional: **SSO con Microsoft Entra ID** (Azure AD) si necesitas SSO corporativo.
+
+---
+
+## 5) Ingesta desde una VM Linux (Elastic Agent)
+
+> Esta sección te deja datos “reales” de logs/métricas para practicar con Observability.
+
+### 5.1 Crear VM de demo (Azure CLI)
+
+> Si ya tienes una VM Linux, salta a **5.2**.
+
+```bash
+# Variables
+RG=rg-elastic-lab
+LOC=westeurope
+VMNAME=vm-elastic-demo
+ADMIN=azureuser
+
+az group create -n $RG -l $LOC
+az vm create -g $RG -n $VMNAME --image Ubuntu2204 --size Standard_B1s \
+  --admin-username $ADMIN --generate-ssh-keys
+# Abre SSH desde tu IP si la NSG no lo permite por defecto
+MYIP=$(curl -s ifconfig.me)
+az network nsg rule create -g $RG --nsg-name ${VMNAME}NSG \
+  -n allow-ssh --priority 1001 --source-address-prefixes $MYIP \
+  --destination-port-ranges 22 --access Allow --protocol Tcp
+```
+
+Conéctate por **SSH** a la VM.
+
+### 5.2 Instalar Elastic Agent (Fleet)
+
+1. En **Kibana** → **Integrations** → busca **“Elastic Agent”** → **Add agent**.
+2. Verás un **comando único** de instalación + **enrollment token** (diferente para Linux/Mac/Win).
+3. Copia el comando para **Linux** (con `sudo`) y pégalo en la VM.
+
+   > *No lo edites: ya contiene tu URL de Fleet y token.*
+4. El agente quedará **enrolled** en la **Agent policy** por defecto.
+
+### 5.3 Activar integraciones (System / Nginx / etc.)
+
+1. En **Kibana** → **Fleet** → **Agents** verifica que tu VM aparece **Online**.
+2. En **Integrations**, añade:
+
+   * **System** (logs de syslog, auth, métricas CPU/memoria/disk).
+   * Cualquier otra integración de tu interés (Nginx, Apache, Docker…).
+3. En unos minutos verás:
+
+   * **Logs**: `Observability → Logs`.
+   * **Métricas**: `Observability → Metrics` (Dashboards incluidos).
+
+---
+
+## 6) Ingesta de servicios Azure (métricas y logs de plataforma)
+
+> Esta vía no requiere agentes en cada recurso; **Elastic Agent** consulta a Azure Monitor/Graph.
+
+### 6.1 Crear App Registration (Service Principal)
+
+1. **Azure Portal** → **Microsoft Entra ID** → **App registrations** → **New registration**.
+2. Asigna un nombre (p. ej. `elastic-azure-reader`).
+3. Guarda **Application (client) ID**, **Directory (tenant) ID**.
+4. En **Certificates & secrets** → **New client secret** → guarda el **valor**.
+
+### 6.2 Permisos (roles)
+
+* Asigna a la App el rol **Reader** (o **Monitoring Reader**) **a nivel de suscripción** (o grupos de recursos que quieras monitorizar).
+  Portal: **Subscriptions** → tu suscripción → **Access control (IAM)** → **Add role assignment**.
+
+### 6.3 Configurar la integración en Kibana
+
+1. **Kibana** → **Integrations** → busca **Microsoft Azure** → **Add Microsoft Azure**.
+2. En la **política** de la integración, introduce:
+
+   * **Tenant ID**, **Client ID**, **Client Secret**.
+   * La **Subscription ID** y servicios a recolectar (Activity Logs, Metrics, VM Insights, etc.).
+3. Guarda y despliega.
+   Verás dashboards en `Observability` cuando empiecen a llegar datos.
+
+---
+
+## 7) Visualización y ESQL rápido
+
+### 7.1 Descubrir datos
+
+* **Discover**: explora los índices/data streams creados por las integraciones (prefijos `logs-*`, `metrics-*`, `azure-*`, etc.).
+
+### 7.2 ESQL (consultas rápidas)
+
+En **Discover → ESQL** (o **Console ESQL**), prueba:
+
+```text
+FROM metrics-*
+| STATS avg_cpu = AVG(system.cpu.total.norm.pct) BY host.name
+| SORT avg_cpu DESC
+| LIMIT 10
+```
+
+```text
+FROM logs-*
+| WHERE MATCH(log.message, "error")
+| STATS errors = COUNT(*) BY host.name
+| SORT errors DESC
+| LIMIT 10
+```
+
+---
+
+## 8) Alertas (ejemplo: CPU alta)
+
+1. **Observability** → **Alerts** → **Rules** → **Create rule**.
+2. Tipo: **Metric threshold**.
+3. Condición: `system.cpu.total.norm.pct > 0.8` durante `5 min`.
+4. **Actions/Connectors**: configura correo o **Microsoft Teams** (Webhook).
+5. Guarda la regla y comprueba disparos en **Alerts**.
+
+---
+
+## 9) Política de retención / costes (ILM y data tiers)
+
+> Objetivo: mantener 7 días en **hot**, 30 días en **warm**, y borrar a los 60 días (ejemplo simple).
+
+1. **Stack Management** → **Data → Index Lifecycle Policies** → **Create policy** (p. ej. `ilm-logs-basic`).
+2. Define:
+
+   * **Hot**: rollover por tamaño (p. ej. 30 GB) o edad (7 días).
+   * **Warm**: mover a los 7 días, shrink/forcemerge si procede.
+   * **Delete**: a los 60 días.
+3. **Asociar la política** a los data streams de logs (vía **Index Templates** de la integración o ajustando la policy en el paquete de integración).
+
+   > Para empezar, puedes aplicar la policy manualmente a un data stream existente desde **Data Streams** → **Edit ilm policy**.
+4. Considera **Searchable Snapshots** (cold/frozen) si tu plan de Elastic lo incluye y buscas menor coste.
+
+---
+
+## 10) Buenas prácticas de seguridad
+
+* Mantén **IP allowlists** mínimas o usa **Private Link**.
+* Usa **SSO** con Entra ID y **RBAC** granular en Kibana.
+* **API keys** en lugar de credenciales de usuario para automatizaciones.
+* Activa **prebuilt rules** en **Security** si vas a usar detecciones (Elastic Defend).
+
+---
+
+## 11) (Opcional) Despliegue mediante Terraform
+
+* Terraform tiene providers para **Elastic Cloud** (creación del deployment) y para **Azure** (recursos/VM).
+* Útil para estandarizar laboratorios y replicar entornos.
+* Mantén estados y variables protegidas (ej. secrets).
+
+> *Evitamos incluir plantillas aquí para no usar YAML/JSON; si lo necesitas, te preparo módulos listos para uso.*
+
+---
+
+## 12) Solución de problemas (FAQ rápida)
+
+* **No veo datos del Agent**:
+  Revisa en **Kibana → Fleet → Agents**; si está `Offline`, mira logs del agente (`sudo systemctl status elastic-agent`) y la conectividad saliente (puertos 443).
+* **Azure integration vacía**:
+  Comprueba **Tenant/Client/Secret**, la **Subscription ID**, y que la App tenga al menos **Reader**. A veces tarda unos minutos en empezar.
+* **Errores 403/401**:
+  Valida usuarios/roles en **Stack Management → Security** o usa una **API key**.
+* **Kibana no abre** o “forbidden by traffic filter”:
+  Tu IP no está en el **Traffic filter** o estás accediendo por una red distinta.
+
+---
+
+## 13) Limpieza (para no dejar costes)
+
+* Si creaste VM de demo:
+
+```bash
+az group delete -n rg-elastic-lab --yes --no-wait
+```
+
+* En **Elastic Cloud**: **Delete deployment** (esto elimina nodos, índices y snapshots ligados a ese despliegue).
+* Elimina **App Registration** y su **Secret** si ya no lo necesitas.
+
+---
+
+## 14) Checklist final (éxito del laboratorio)
+
+* [ ] Deployment de Elastic Cloud en Azure **Healthy**.
+* [ ] Acceso a **Kibana** con usuario propio/SSO.
+* [ ] **Traffic filter** aplicado (IP o Private Link).
+* [ ] **Elastic Agent** instalado en una VM y datos visibles (Logs/Metrics).
+* [ ] **Integración Azure** funcionando (dashboards con métricas/plataforma).
+* [ ] Regla de **alerta** activa (ej. CPU).
+* [ ] **ILM** configurado para retención/costes.
+
+---
+
+## 15) Siguientes pasos (para producción)
+
+* Diseñar **naming conventions** y **políticas de tags** en Azure para segmentar fuentes.
+* Ampliar **Fleet Policies** por tipos de carga (Linux/Windows/Kubernetes/AKS).
+* Activar **APM** y **RUM** si hay aplicaciones.
+* Evaluar **Private Link** + **SSO** + **Azure Monitor Diagnostic Settings** (rutas de exportación específicas por servicio).
+* Integración con **SIEM/SOAR** y pipelines de respuesta (Security).
+* **FinOps**: dimensionar hot/warm, aplicar compaction/rollover, y usar **autoscaling** con umbrales.
+
 
