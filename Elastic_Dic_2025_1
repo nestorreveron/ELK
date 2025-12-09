@@ -130,6 +130,48 @@ az vm create \
   --nics es-node-2-nic
 ```
 
+## 3.1. Agregar IPs públicas
+
+#VM 1 – Crear IP pública
+
+az network public-ip create \
+  -g $RG \
+  -n es-node-1-ip \
+  --sku Basic \
+  --allocation-method Static
+
+#VM 2 – Crear IP pública
+
+az network public-ip create \
+  -g $RG \
+  -n es-node-2-ip \
+  --sku Basic \
+  --allocation-method Static
+
+
+#Asociar la IP pública a la NIC correspondiente
+
+#VM1
+
+az network nic ip-config update \
+  -g $RG \
+  --nic-name es-node-1-nic \
+  --name ipconfig1 \
+  --public-ip-address es-node-1-ip
+
+#VM2
+
+az network nic ip-config update \
+  -g $RG \
+  --nic-name es-node-2-nic \
+  --name ipconfig1 \
+  --public-ip-address es-node-2-ip
+
+#Obtener las nuevas IP públicas
+
+az network public-ip show -g $RG -n es-node-1-ip --query "ipAddress" -o tsv
+az network public-ip show -g $RG -n es-node-2-ip --query "ipAddress" -o tsv
+
 ---
 
 ## 4. Obtener IPs públicas
