@@ -1,15 +1,37 @@
-## A. Infraestructura en Azure (EastUS2)
+* Región EastUS2
+* 2 nodos Ubuntu 22.04
+* Elasticsearch 7.x
+* Configuración del clúster
+* Ejercicios del laboratorio Día 1
 
-### 1. Crear Resource Group
+---
+
+# ===========================================
+
+# **LABORATORIO COMPLETO – ELK EN AZURE (EastUS2)**
+
+# **Versión con usuario/contraseña (NO SSH keys)**
+
+# ===========================================
+
+---
+
+# A. Crear infraestructura en Azure (EastUS2)
+
+## 1. Variables iniciales
 
 ```bash
 RG=rg-elastic-lab
 LOC=eastus2
+```
 
+## 2. Crear Resource Group
+
+```bash
 az group create -n $RG -l $LOC
 ```
 
-### 2. Crear red virtual y subred
+## 3. Crear VNET y Subnet
 
 ```bash
 VNET=vnet-elastic-lab
@@ -22,86 +44,129 @@ az network vnet create \
   --subnet-prefix 10.10.1.0/24
 ```
 
-### 3. Crear NSG y reglas básicas
+## 4. Crear NSG y reglas
 
 ```bash
 NSG=nsg-elastic-lab
 
 az network nsg create -g $RG -n $NSG
-# SSH desde tu IP pública
+```
+
+### Regla SSH (solo tu IP):
+
+```bash
 MYIP=$(curl -s https://ifconfig.me)
+
 az network nsg rule create -g $RG --nsg-name $NSG -n Allow-SSH \
   --priority 1000 --access Allow --protocol Tcp \
   --direction Inbound --source-address-prefixes $MYIP \
-  --source-port-ranges "*" --destination-port-ranges 22
-# (Opcional) abrir 9200 sólo desde tu IP para probar desde fuera
+  --destination-port-ranges 22
+```
+
+### Regla para puerto 9200 (opcional)
+
+```bash
 az network nsg rule create -g $RG --nsg-name $NSG -n Allow-ES-HTTP \
   --priority 1010 --access Allow --protocol Tcp \
   --direction Inbound --source-address-prefixes $MYIP \
-  --source-port-ranges "*" --destination-port-ranges 9200
-```
-
-### 4. Crear las dos VMs Ubuntu
-
-```bash
-VM1=es-node-1
-VM2=es-node-2
-IMAGE=Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest   # Ubuntu 22.04
-SIZE=Standard_B2s
-
-# NIC 1
-az network nic create -g $RG -n ${VM1}-nic \
-  --vnet-name $VNET --subnet $SUBNET --network-security-group $NSG
-
-# NIC 2
-az network nic create -g $RG -n ${VM2}-nic \
-  --vnet-name $VNET --subnet $SUBNET --network-security-group $NSG
-
-# VM 1
-az vm create -g $RG -n $VM1 \
-  --size $SIZE --image $IMAGE \
-  --nics ${VM1}-nic \
-  --admin-username azureuser \
-  --generate-ssh-keys
-
-# VM 2
-az vm create -g $RG -n $VM2 \
-  --size $SIZE --image $IMAGE \
-  --nics ${VM2}-nic \
-  --admin-username azureuser \
-  --generate-ssh-keys
-```
-
-Obtén las IP públicas para conectar por SSH:
-
-```bash
-az vm list-ip-addresses -g $RG -n $VM1 -o table
-az vm list-ip-addresses -g $RG -n $VM2 -o table
+  --destination-port-ranges 9200
 ```
 
 ---
 
-## B. Instalar Elasticsearch 7.x en ambas VMs
+# B. Crear dos Ubuntu VMs usando usuario + contraseña
 
-Vamos a usar la **repo oficial 7.x** (suficiente para todos los labs y mucho más simple para clúster sin TLS)([Time4VPS Help Center][1]).
+## **IMPORTANTE**
 
-### 1. Conéctate a la VM1
+Debes definir una contraseña segura para las VMs.
+Ejemplo:
 
 ```bash
-ssh azureuser@IP_PUBLICA_VM1
+ADMINUSER=elasticadmin
+ADMINPASS="Elastic12345!"
 ```
 
-### 2. Instalar Elasticsearch (VM1)
+*(Puedes cambiarla por la que desees.)*
+
+---
+
+## 1. Crear NICs
 
 ```bash
-# Actualizar
+az network nic create -g $RG -n es-node-1-nic \
+  --vnet-name $VNET --subnet $SUBNET --network-security-group $NSG
+
+az network nic create -g $RG -n es-node-2-nic \
+  --vnet-name $VNET --subnet $SUBNET --network-security-group $NSG
+```
+
+---
+
+## 2. Crear VM 1 con password (NO ssh keys)
+
+```bash
+az vm create \
+  -g $RG \
+  -n es-node-1 \
+  --image Ubuntu2204 \
+  --size Standard_B2s \
+  --admin-username $ADMINUSER \
+  --admin-password $ADMINPASS \
+  --authentication-type password \
+  --nics es-node-1-nic
+```
+
+---
+
+## 3. Crear VM 2 con password
+
+```bash
+az vm create \
+  -g $RG \
+  -n es-node-2 \
+  --image Ubuntu2204 \
+  --size Standard_B2s \
+  --admin-username $ADMINUSER \
+  --admin-password $ADMINPASS \
+  --authentication-type password \
+  --nics es-node-2-nic
+```
+
+---
+
+## 4. Obtener IPs públicas
+
+```bash
+az vm list-ip-addresses -g $RG -o table
+```
+
+Ejemplo:
+
+| VM        | Public IP |
+| --------- | --------- |
+| es-node-1 | 20.x.x.x  |
+| es-node-2 | 52.x.x.x  |
+
+---
+
+# C. Instalar Elasticsearch 7.x en ambas VMs
+
+## 1. Conectarte por SSH usando contraseña
+
+```bash
+ssh elasticadmin@20.x.x.x
+```
+
+---
+
+## 2. Instalar Elasticsearch en cada VM
+
+```bash
 sudo apt update && sudo apt upgrade -y
 
-# Añadir clave GPG
 curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | \
   sudo gpg --dearmor -o /usr/share/keyrings/elastic.gpg
 
-# Añadir repositorio 7.x
 echo "deb [signed-by=/usr/share/keyrings/elastic.gpg] https://artifacts.elastic.co/packages/7.x/apt stable main" | \
   sudo tee /etc/apt/sources.list.d/elastic-7.x.list
 
@@ -109,37 +174,32 @@ sudo apt update
 sudo apt install -y elasticsearch
 ```
 
-Repite **exactamente lo mismo** en `es-node-2`:
-
-```bash
-ssh azureuser@IP_PUBLICA_VM2
-# y ejecutas los mismos comandos de instalación
-```
+Repite en VM2.
 
 ---
 
-## C. Configurar un clúster de 2 nodos
+# D. Configurar clúster de 2 nodos
 
-Primero, en cada VM, obten la IP privada:
+Obtén IP privada de cada nodo:
 
 ```bash
 ip addr show eth0 | grep "inet "
 ```
 
-Supongamos:
+Ejemplo:
 
-* `es-node-1` → 10.10.1.4
-* `es-node-2` → 10.10.1.5
+* es-node-1 → 10.10.1.4
+* es-node-2 → 10.10.1.5
 
-### 1. Configuración en `es-node-1`
+---
 
-Edita `/etc/elasticsearch/elasticsearch.yml`:
+# 1. Configurar elasticsearch.yml en es-node-1
 
 ```bash
 sudo nano /etc/elasticsearch/elasticsearch.yml
 ```
 
-Añade / ajusta estas líneas (quita `#` si hace falta):
+Agregar:
 
 ```yaml
 cluster.name: kyndryl-elk-lab
@@ -155,21 +215,18 @@ http.port: 9200
 discovery.seed_hosts: ["10.10.1.4","10.10.1.5"]
 cluster.initial_master_nodes: ["es-node-1","es-node-2"]
 
-# Para simplificar el laboratorio (sin seguridad en 7.x)
 xpack.security.enabled: false
 ```
 
-Guarda y cierra.
+---
 
-### 2. Configuración en `es-node-2`
-
-En `es-node-2`:
+# 2. Configurar elasticsearch.yml en es-node-2
 
 ```bash
 sudo nano /etc/elasticsearch/elasticsearch.yml
 ```
 
-Configura:
+Agregar:
 
 ```yaml
 cluster.name: kyndryl-elk-lab
@@ -188,9 +245,11 @@ cluster.initial_master_nodes: ["es-node-1","es-node-2"]
 xpack.security.enabled: false
 ```
 
-### 3. Arrancar servicios y habilitar arranque automático
+---
 
-En **cada nodo**:
+# 3. Activar servicios
+
+En cada nodo:
 
 ```bash
 sudo systemctl daemon-reload
@@ -198,33 +257,28 @@ sudo systemctl enable elasticsearch
 sudo systemctl start elasticsearch
 ```
 
-Comprueba que responde (desde cada nodo):
+Validar:
 
 ```bash
 curl http://localhost:9200
 ```
 
-Deberías ver JSON con `cluster_name` = `kyndryl-elk-lab`.
+---
 
-### 4. Verificar el clúster desde `es-node-1`
+# 4. Verificar clúster
 
 ```bash
-# Salud del clúster
 curl http://localhost:9200/_cluster/health?pretty
-
-# Ver nodos
 curl http://localhost:9200/_cat/nodes?v
 ```
 
-Tienes que ver 2 nodos en `_cat/nodes`.
+Debes ver ambos nodos.
 
 ---
 
-## D. Laboratorio Día 1 – Ejercicios prácticos (slide)
+# E. LABORATORIO DÍA 1 (como en el slide)
 
-A partir de aquí, todo lo puedes hacer desde **es-node-1** (o desde tu máquina contra la IP pública, cambiando `localhost` por la IP).
-
-### 1. Creación del índice y mappings
+## 1. Crear índice con mappings
 
 ```bash
 curl -X PUT "http://localhost:9200/logs-demo" \
@@ -232,102 +286,73 @@ curl -X PUT "http://localhost:9200/logs-demo" \
   -d '{
     "mappings": {
       "properties": {
-        "message":   { "type": "text"   },
-        "timestamp": { "type": "date"   },
-        "status":    { "type": "keyword"}
+        "message":   { "type": "text" },
+        "timestamp": { "type": "date" },
+        "status":    { "type": "keyword" }
       }
     }
   }'
 ```
 
-Verifica el mapping:
+---
 
-```bash
-curl http://localhost:9200/logs-demo/_mapping?pretty
-```
-
-### 2. Ingesta y verificación del clúster
-
-Inserta el primer documento:
+## 2. Insertar documento
 
 ```bash
 curl -X POST "http://localhost:9200/logs-demo/_doc/1" \
   -H 'Content-Type: application/json' \
   -d '{
-    "message":   "Connection established",
+    "message": "Connection established",
     "timestamp": "2023-10-27T10:00:00Z",
-    "status":    "200"
+    "status": "200"
   }'
 ```
 
-Comprueba salud del clúster y shards del índice:
+---
+
+## 3. Verificar clúster y shards
 
 ```bash
-# Estado general
-curl "http://localhost:9200/_cluster/health?pretty"
-
-# Shards del índice logs-demo
-curl "http://localhost:9200/_cat/shards/logs-demo?v"
+curl http://localhost:9200/_cluster/health?pretty
+curl http://localhost:9200/_cat/shards/logs-demo?v
 ```
 
-Ahí deberías ver algo tipo:
+Debes ver:
 
-* shard primario (p) en un nodo
-* réplica (r) en el otro nodo
+* shard primario en un nodo
+* réplica en el otro
 
-igual que en el diagrama del slide.
+---
 
-### 3. Búsquedas básicas con Query DSL
-
-#### 3.1. Búsqueda full-text (match)
+## 4. Búsqueda full-text (match)
 
 ```bash
 curl -X GET "http://localhost:9200/logs-demo/_search" \
   -H 'Content-Type: application/json' \
   -d '{
     "query": {
-      "match": {
-        "message": "connection"
-      }
+      "match": { "message": "connection" }
     }
   }'
 ```
 
-Debes ver el documento con un `_score` calculado (búsqueda de texto).
+---
 
-#### 3.2. Búsqueda exacta (term) por estado
+## 5. Búsqueda exacta (term)
 
 ```bash
 curl -X GET "http://localhost:9200/logs-demo/_search" \
   -H 'Content-Type: application/json' \
   -d '{
     "query": {
-      "term": {
-        "status": "200"
-      }
+      "term": { "status": "200" }
     }
   }'
 ```
 
-Aquí verás que no hay `_score` relevante (o será 1 constante), porque `keyword` se trata como exact match.
+---
 
-#### 3.3. Búsqueda por rango de tiempo
-
-Primero ingresa algunos documentos adicionales rápidos:
-
-```bash
-for i in {1..5}; do
-  curl -s -X POST "http://localhost:9200/logs-demo/_doc" \
-    -H 'Content-Type: application/json' \
-    -d "{
-      \"message\": \"Test log $i\",
-      \"timestamp\": \"2024-01-0${i}T10:00:00Z\",
-      \"status\": \"200\"
-    }" > /dev/null
-done
-```
-
-Ahora ejecuta la consulta por rango:
+## 6. Búsqueda por rango
 
 ```bash
 curl -X GET "http://localhost:9200/logs-demo/_search" \
@@ -335,35 +360,11 @@ curl -X GET "http://localhost:9200/logs-demo/_search" \
   -d '{
     "query": {
       "range": {
-        "timestamp": {
-          "gte": "2024-01-02T00:00:00Z",
-          "lte": "2024-01-04T23:59:59Z"
-        }
+        "timestamp": { "gte": "now-1h" }
       }
     }
   }'
 ```
 
-Verás solo los documentos cuyos timestamps están entre el 2 y el 4 de enero.
-
 ---
 
-## E. Qué has logrado con este laboratorio
-
-1. **Desplegaste en EastUS2** un clúster de 2 nodos en Azure.
-2. Instalaste y configuraste Elasticsearch 7.x con:
-
-   * cluster.name,
-   * descubrimiento entre nodos,
-   * roles de nodo y red.
-3. Creaste un índice con **mappings explícitos**.
-4. Ingeriste documentos de prueba.
-5. Verificaste:
-
-   * salud del clúster (`_cluster/health`),
-   * distribución de shards (`_cat/shards`).
-6. Ejecutaste **búsquedas básicas**:
-
-   * `match` (full-text),
-   * `term` (exacto),
-   * `range` (por fechas).
