@@ -21,15 +21,13 @@
 ## 1. Variables iniciales
 
 ```bash
-RG=rg-elastic-lab
+RG=kyndrylXX
 LOC=eastus2
 ```
 
 ## 2. Crear Resource Group
 
-```bash
-az group create -n $RG -l $LOC
-```
+# Ya el resource group existe, no hace falta crearlo. 
 
 ## 3. Crear VNET y Subnet
 
