@@ -1,0 +1,369 @@
+## A. Infraestructura en Azure (EastUS2)
+
+### 1. Crear Resource Group
+
+```bash
+RG=rg-elastic-lab
+LOC=eastus2
+
+az group create -n $RG -l $LOC
+```
+
+### 2. Crear red virtual y subred
+
+```bash
+VNET=vnet-elastic-lab
+SUBNET=subnet-elastic-lab
+
+az network vnet create \
+  -g $RG -n $VNET \
+  --address-prefix 10.10.0.0/16 \
+  --subnet-name $SUBNET \
+  --subnet-prefix 10.10.1.0/24
+```
+
+### 3. Crear NSG y reglas básicas
+
+```bash
+NSG=nsg-elastic-lab
+
+az network nsg create -g $RG -n $NSG
+# SSH desde tu IP pública
+MYIP=$(curl -s https://ifconfig.me)
+az network nsg rule create -g $RG --nsg-name $NSG -n Allow-SSH \
+  --priority 1000 --access Allow --protocol Tcp \
+  --direction Inbound --source-address-prefixes $MYIP \
+  --source-port-ranges "*" --destination-port-ranges 22
+# (Opcional) abrir 9200 sólo desde tu IP para probar desde fuera
+az network nsg rule create -g $RG --nsg-name $NSG -n Allow-ES-HTTP \
+  --priority 1010 --access Allow --protocol Tcp \
+  --direction Inbound --source-address-prefixes $MYIP \
+  --source-port-ranges "*" --destination-port-ranges 9200
+```
+
+### 4. Crear las dos VMs Ubuntu
+
+```bash
+VM1=es-node-1
+VM2=es-node-2
+IMAGE=Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest   # Ubuntu 22.04
+SIZE=Standard_B2s
+
+# NIC 1
+az network nic create -g $RG -n ${VM1}-nic \
+  --vnet-name $VNET --subnet $SUBNET --network-security-group $NSG
+
+# NIC 2
+az network nic create -g $RG -n ${VM2}-nic \
+  --vnet-name $VNET --subnet $SUBNET --network-security-group $NSG
+
+# VM 1
+az vm create -g $RG -n $VM1 \
+  --size $SIZE --image $IMAGE \
+  --nics ${VM1}-nic \
+  --admin-username azureuser \
+  --generate-ssh-keys
+
+# VM 2
+az vm create -g $RG -n $VM2 \
+  --size $SIZE --image $IMAGE \
+  --nics ${VM2}-nic \
+  --admin-username azureuser \
+  --generate-ssh-keys
+```
+
+Obtén las IP públicas para conectar por SSH:
+
+```bash
+az vm list-ip-addresses -g $RG -n $VM1 -o table
+az vm list-ip-addresses -g $RG -n $VM2 -o table
+```
+
+---
+
+## B. Instalar Elasticsearch 7.x en ambas VMs
+
+Vamos a usar la **repo oficial 7.x** (suficiente para todos los labs y mucho más simple para clúster sin TLS)([Time4VPS Help Center][1]).
+
+### 1. Conéctate a la VM1
+
+```bash
+ssh azureuser@IP_PUBLICA_VM1
+```
+
+### 2. Instalar Elasticsearch (VM1)
+
+```bash
+# Actualizar
+sudo apt update && sudo apt upgrade -y
+
+# Añadir clave GPG
+curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | \
+  sudo gpg --dearmor -o /usr/share/keyrings/elastic.gpg
+
+# Añadir repositorio 7.x
+echo "deb [signed-by=/usr/share/keyrings/elastic.gpg] https://artifacts.elastic.co/packages/7.x/apt stable main" | \
+  sudo tee /etc/apt/sources.list.d/elastic-7.x.list
+
+sudo apt update
+sudo apt install -y elasticsearch
+```
+
+Repite **exactamente lo mismo** en `es-node-2`:
+
+```bash
+ssh azureuser@IP_PUBLICA_VM2
+# y ejecutas los mismos comandos de instalación
+```
+
+---
+
+## C. Configurar un clúster de 2 nodos
+
+Primero, en cada VM, obten la IP privada:
+
+```bash
+ip addr show eth0 | grep "inet "
+```
+
+Supongamos:
+
+* `es-node-1` → 10.10.1.4
+* `es-node-2` → 10.10.1.5
+
+### 1. Configuración en `es-node-1`
+
+Edita `/etc/elasticsearch/elasticsearch.yml`:
+
+```bash
+sudo nano /etc/elasticsearch/elasticsearch.yml
+```
+
+Añade / ajusta estas líneas (quita `#` si hace falta):
+
+```yaml
+cluster.name: kyndryl-elk-lab
+
+node.name: es-node-1
+node.master: true
+node.data: true
+node.ingest: true
+
+network.host: 0.0.0.0
+http.port: 9200
+
+discovery.seed_hosts: ["10.10.1.4","10.10.1.5"]
+cluster.initial_master_nodes: ["es-node-1","es-node-2"]
+
+# Para simplificar el laboratorio (sin seguridad en 7.x)
+xpack.security.enabled: false
+```
+
+Guarda y cierra.
+
+### 2. Configuración en `es-node-2`
+
+En `es-node-2`:
+
+```bash
+sudo nano /etc/elasticsearch/elasticsearch.yml
+```
+
+Configura:
+
+```yaml
+cluster.name: kyndryl-elk-lab
+
+node.name: es-node-2
+node.master: true
+node.data: true
+node.ingest: true
+
+network.host: 0.0.0.0
+http.port: 9200
+
+discovery.seed_hosts: ["10.10.1.4","10.10.1.5"]
+cluster.initial_master_nodes: ["es-node-1","es-node-2"]
+
+xpack.security.enabled: false
+```
+
+### 3. Arrancar servicios y habilitar arranque automático
+
+En **cada nodo**:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable elasticsearch
+sudo systemctl start elasticsearch
+```
+
+Comprueba que responde (desde cada nodo):
+
+```bash
+curl http://localhost:9200
+```
+
+Deberías ver JSON con `cluster_name` = `kyndryl-elk-lab`.
+
+### 4. Verificar el clúster desde `es-node-1`
+
+```bash
+# Salud del clúster
+curl http://localhost:9200/_cluster/health?pretty
+
+# Ver nodos
+curl http://localhost:9200/_cat/nodes?v
+```
+
+Tienes que ver 2 nodos en `_cat/nodes`.
+
+---
+
+## D. Laboratorio Día 1 – Ejercicios prácticos (slide)
+
+A partir de aquí, todo lo puedes hacer desde **es-node-1** (o desde tu máquina contra la IP pública, cambiando `localhost` por la IP).
+
+### 1. Creación del índice y mappings
+
+```bash
+curl -X PUT "http://localhost:9200/logs-demo" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "mappings": {
+      "properties": {
+        "message":   { "type": "text"   },
+        "timestamp": { "type": "date"   },
+        "status":    { "type": "keyword"}
+      }
+    }
+  }'
+```
+
+Verifica el mapping:
+
+```bash
+curl http://localhost:9200/logs-demo/_mapping?pretty
+```
+
+### 2. Ingesta y verificación del clúster
+
+Inserta el primer documento:
+
+```bash
+curl -X POST "http://localhost:9200/logs-demo/_doc/1" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "message":   "Connection established",
+    "timestamp": "2023-10-27T10:00:00Z",
+    "status":    "200"
+  }'
+```
+
+Comprueba salud del clúster y shards del índice:
+
+```bash
+# Estado general
+curl "http://localhost:9200/_cluster/health?pretty"
+
+# Shards del índice logs-demo
+curl "http://localhost:9200/_cat/shards/logs-demo?v"
+```
+
+Ahí deberías ver algo tipo:
+
+* shard primario (p) en un nodo
+* réplica (r) en el otro nodo
+
+igual que en el diagrama del slide.
+
+### 3. Búsquedas básicas con Query DSL
+
+#### 3.1. Búsqueda full-text (match)
+
+```bash
+curl -X GET "http://localhost:9200/logs-demo/_search" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": {
+      "match": {
+        "message": "connection"
+      }
+    }
+  }'
+```
+
+Debes ver el documento con un `_score` calculado (búsqueda de texto).
+
+#### 3.2. Búsqueda exacta (term) por estado
+
+```bash
+curl -X GET "http://localhost:9200/logs-demo/_search" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": {
+      "term": {
+        "status": "200"
+      }
+    }
+  }'
+```
+
+Aquí verás que no hay `_score` relevante (o será 1 constante), porque `keyword` se trata como exact match.
+
+#### 3.3. Búsqueda por rango de tiempo
+
+Primero ingresa algunos documentos adicionales rápidos:
+
+```bash
+for i in {1..5}; do
+  curl -s -X POST "http://localhost:9200/logs-demo/_doc" \
+    -H 'Content-Type: application/json' \
+    -d "{
+      \"message\": \"Test log $i\",
+      \"timestamp\": \"2024-01-0${i}T10:00:00Z\",
+      \"status\": \"200\"
+    }" > /dev/null
+done
+```
+
+Ahora ejecuta la consulta por rango:
+
+```bash
+curl -X GET "http://localhost:9200/logs-demo/_search" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": {
+      "range": {
+        "timestamp": {
+          "gte": "2024-01-02T00:00:00Z",
+          "lte": "2024-01-04T23:59:59Z"
+        }
+      }
+    }
+  }'
+```
+
+Verás solo los documentos cuyos timestamps están entre el 2 y el 4 de enero.
+
+---
+
+## E. Qué has logrado con este laboratorio
+
+1. **Desplegaste en EastUS2** un clúster de 2 nodos en Azure.
+2. Instalaste y configuraste Elasticsearch 7.x con:
+
+   * cluster.name,
+   * descubrimiento entre nodos,
+   * roles de nodo y red.
+3. Creaste un índice con **mappings explícitos**.
+4. Ingeriste documentos de prueba.
+5. Verificaste:
+
+   * salud del clúster (`_cluster/health`),
+   * distribución de shards (`_cat/shards`).
+6. Ejecutaste **búsquedas básicas**:
+
+   * `match` (full-text),
+   * `term` (exacto),
+   * `range` (por fechas).
