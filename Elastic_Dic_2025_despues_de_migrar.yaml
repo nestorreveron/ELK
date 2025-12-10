@@ -1,0 +1,269 @@
+
+# LABORATORIO AVANZADO – VERSIÓN ACTUALIZADA
+
+## Elasticsearch + Kibana (interactivo y visual)
+
+Clúster: **Elasticsearch 8.x**
+Entorno: **2 nodos** (es-node-1, es-node-2)
+Frontend: **Kibana 8.x** (Stack Management → Index Management)
+
+---
+
+# **0. Validaciones iniciales (terminal)**
+
+```bash
+curl -s http://localhost:9200/_cluster/health?pretty
+curl -s http://localhost:9200/_cat/nodes?v
+```
+
+Confirma:
+
+* 2 nodos
+* status: **green**
+
+---
+
+# **1. Crear índice avanzado – vía curl (como estaba)**
+
+(Lo mantengo igual; es perfecto para enseñar análisis, nested y multi-field.)
+
+```bash
+curl -X PUT "http://localhost:9200/products-advanced" ...
+```
+
+---
+
+# **2. Indexar documentos – vía curl (Bulk API)**
+
+(Se mantiene igual.)
+
+---
+
+# **3. NUEVO: Revisar todo visualmente en Kibana**
+
+Aquí empiezan los pasos visuales que querías.
+
+---
+
+# **[KIBANA] A. Ver el nuevo índice “products-advanced”**
+
+Ruta:
+
+**Stack Management → Index Management → Indices**
+
+Allí deberías ver:
+
+* products-advanced
+* Estado: green
+* Primaries: 1
+* Replicas: 1
+* Docs count: 4
+
+Actividad para los alumnos:
+
+1. Hacer clic en **products-advanced**
+2. Revisar:
+
+   * **Mappings**
+   * **Settings**
+   * **Shard allocation**
+
+Es muy visual y ayuda a entender shards y réplicas.
+
+---
+
+# **[KIBANA] B. Ver dónde están los shards (visual 👌)**
+
+En la ventana del índice:
+
+1. Clic en **View Shard Allocation**
+2. Kibana muestra:
+
+* Shard primario en es-node-1
+* Shard réplica en es-node-2
+
+Esto hace tangible la HA del clúster.
+
+---
+
+# **[KIBANA] C. Crear un Index Pattern para usar Discover**
+
+Ruta:
+
+**Kibana → Data Views → Create data view**
+
+Valores:
+
+* **Name:** products-advanced
+* **Index pattern:** products-advanced*
+* **Time field:** available_from
+
+Dar clic en **Create data view**.
+
+Esto habilita Discover, Visualize y Dashboards.
+
+---
+
+# **[KIBANA] D. Buscar documentos desde Discover (sin curl)**
+
+Ruta:
+
+**Kibana → Discover → seleccionar products-advanced**
+
+Prácticas bonitas para los alumnos:
+
+### Buscar laptops
+
+```
+category : "laptop"
+```
+
+### Buscar gaming
+
+```
+tags : gaming
+```
+
+### Buscar por nested usando KQL
+
+```
+attributes.key : "ram" and attributes.value : "32GB"
+```
+
+### Buscar texto analizado
+
+```
+description : "streaming"
+```
+
+Esto demuestra rápidamente la diferencia entre campos keyword/text.
+
+---
+
+# **[KIBANA] E. Visualizar datos con Lens (bonito y 100% guiado)**
+
+Ruta:
+
+**Kibana → Visualize → Lens**
+
+### Ejercicio 1: Conteo de productos por categoría
+
+1. Drag & drop campo **category** a la zona de horizontal axis.
+2. Drag & drop **Records** a vertical axis.
+3. Crear una **barchart** automáticamente.
+
+Resultado: gráfico por categorías (laptop, monitor, keyboard).
+
+---
+
+### Ejercicio 2: Agregación temporal (date_histogram) sin curl
+
+1. En Lens arrastra **available_from** → Horizontal axis.
+2. Kibana automáticamente crea un **histograma mensual**.
+3. Agrega **Records** como métrica.
+
+Resultado: gráfico por meses de disponibilidad.
+
+---
+
+### Ejercicio 3: Medir diversidad con cardinalidad (visual)
+
+1. Cambia métrica a **Unique count of tags**
+2. Muestra cuántos tags únicos existen.
+
+---
+
+# **4. NUEVO: Crear visualizaciones + Dashboard**
+
+### [KIBANA] Crear un dashboard real:
+
+Ruta:
+
+**Kibana → Dashboard → Create Dashboard**
+
+Agrega:
+
+* Gráfico de categorías
+* Histograma por fecha
+* Tabla de productos (Discover → Save as Lens → Add to dashboard)
+
+Esto le da un toque profesional al laboratorio y hace que los alumnos digan “wow, esto es Elastic de verdad”.
+
+---
+
+# **5. NUEVO: Interacción con filtros visuales**
+
+En el dashboard, los alumnos pueden:
+
+* filtrar haciendo clic sobre una categoría
+* combinar filtros
+* ver cómo cambian todas las visualizaciones al mismo tiempo
+
+---
+
+# **6. Mantener las consultas avanzadas en curl**
+
+Tus búsquedas fuzzy, phrase con slop, regexp y bool siguen siendo perfectas para la parte técnica.
+
+Podemos agregar un paso visual después:
+
+# **[KIBANA] Mostrar Query DSL generado automáticamente**
+
+En Discover:
+
+1. Haz una búsqueda
+2. Abre el panel lateral
+3. Ve a **Inspect → Request → Query DSL**
+
+Kibana mostrará el JSON exacto equivalente a la búsqueda KQL.
+
+Esto es una clase magistral para entender cómo KQL → DSL → Lucene.
+
+---
+
+# **7. NUEVO: Mostrar shards de forma visual desde Console**
+
+Ruta:
+
+**Kibana → Dev Tools → Console**
+
+Pide a los alumnos ejecutar:
+
+```
+GET _cat/shards/products-advanced?v
+```
+
+Verán:
+
+* un shard primario (p)
+* una réplica (r)
+* nodos donde están asignados
+
+---
+
+# **8. NUEVO: Mostrar el ILM (si se usa luego)**
+
+Aunque este lab no usa ILM, puedes mostrarlo visualmente:
+
+Ruta:
+
+**Stack Management → Data → Index Lifecycle Policies**
+
+---
+
+# Resumen – Lo que agregamos a Kibana (lo que pediste)
+
+Los pasos visuales nuevos para los alumnos:
+
+1. Ver índices y shards en Kibana
+2. Crear data view
+3. Usar Discover
+4. KQL básico
+5. KQL con nested
+6. Crear visualizaciones con Lens
+7. Crear dashboard profesional
+8. Ver Query DSL generado
+9. Usar Dev Tools para inspeccionar shards
+10. Visualizar mappings y settings
+
+
