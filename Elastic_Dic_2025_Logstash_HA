@@ -121,6 +121,62 @@ Obtén los NICs:
 NIC1=$(az vm show -g $RG -n $VM1 --query "networkProfile.networkInterfaces[0].id" -o tsv)
 NIC2=$(az vm show -g $RG -n $VM2 --query "networkProfile.networkInterfaces[0].id" -o tsv)
 ```
+# ================================================================
+# URGENTE - 
+
+#Quitar la IP pública Basic de la NIC de es-node-1
+
+az network nic ip-config update \
+  -g $RG \
+  --nic-name es-node-1-nic \
+  --name ipconfig1 \
+  --remove publicIpAddress
+
+#Quitar la IP pública Basic de la NIC de es-node-2
+
+az network nic ip-config update \
+  -g $RG \
+  --nic-name es-node-2-nic \
+  --name ipconfig1 \
+  --remove publicIpAddress
+
+# (Opcional) Borrar las IP públicas Basic
+az network public-ip delete -g $RG -n es-node-1-ip
+az network public-ip delete -g $RG -n es-node-2-ip
+
+# Crear las 2 nuevas IP Públicas Standards
+
+az network public-ip create \
+  -g $RG \
+  -n es-node-1-ip \
+  --sku standard \
+  --allocation-method Static
+
+#VM 2 – Crear IP pública
+
+az network public-ip create \
+  -g $RG \
+  -n es-node-2-ip \
+  --sku standard \
+  --allocation-method Static
+
+#Asociar la IP pública a la NIC correspondiente
+
+#VM1
+
+az network nic ip-config update \
+  -g $RG \
+  --nic-name es-node-1-nic \
+  --name ipconfig1 \
+  --public-ip-address es-node-1-ip
+
+#VM2
+
+az network nic ip-config update \
+  -g $RG \
+  --nic-name es-node-2-nic \
+  --name ipconfig1 \
+  --public-ip-address es-node-2-ip
 
 Agregar ambos NICs:
 
