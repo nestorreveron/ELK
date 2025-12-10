@@ -1,0 +1,363 @@
+
+✔ Instalación en ambos nodos
+✔ Load Balancer en Azure
+✔ Backend Pool con tus VMs
+✔ Reglas de entrada
+✔ Pipelines idénticos
+✔ HA real (active-active)
+✔ Pruebas finales distribuidas
+
+# =========================================================
+
+# **LAB COMPLETO – LOGSTASH EN HA (Alta Disponibilidad)**
+
+# **Arquitectura: 2 nodos + Azure Load Balancer**
+
+# =========================================================
+
+## **Objetivo del laboratorio**
+
+Convertir tus 2 VMs de Azure (`es-node-1` y `es-node-2`) en un clúster **active-active Logstash HA**, detrás de un **Azure Load Balancer**, listo para recibir tráfico desde Beats, Fluent Bit o cualquier agente.
+
+---
+
+# ============================================
+
+# **A. Variables iniciales (EDITA SOLO RG)**
+
+# ============================================
+
+En CloudShell:
+
+```bash
+RG="kyndrylXX"            # Tu resource group
+LOC="eastus2"             # Región del lab
+VM1="es-node-1"
+VM2="es-node-2"
+LS_LB="logstash-lb"
+LS_BE_POOL="logstash-bepool"
+LS_PROBE="ls-probe"
+LS_RULE="ls-rule"
+PORT=5044             # Puerto estándar para Beats -> Logstash
+```
+
+---
+
+# =================================================
+
+# **B. Crear Load Balancer para Logstash HA**
+
+# =================================================
+
+## **1. Crear IP pública del LB**
+
+```bash
+az network public-ip create \
+  -g $RG \
+  -n ${LS_LB}-pip \
+  --sku Standard \
+  --allocation-method static
+```
+
+---
+
+## **2. Crear Load Balancer**
+
+```bash
+az network lb create \
+  -g $RG \
+  -n $LS_LB \
+  --sku Standard \
+  --frontend-ip-name ls-frontend \
+  --backend-pool-name $LS_BE_POOL \
+  --public-ip-address ${LS_LB}-pip
+```
+
+---
+
+## **3. Agregar un Health Probe**
+
+El health probe supervisa Logstash:
+
+```bash
+az network lb probe create \
+  -g $RG \
+  --lb-name $LS_LB \
+  -n $LS_PROBE \
+  --protocol tcp \
+  --port $PORT
+```
+
+---
+
+## **4. Crear regla Load Balancer (puerto 5044)**
+
+```bash
+az network lb rule create \
+  -g $RG \
+  --lb-name $LS_LB \
+  -n $LS_RULE \
+  --frontend-ip-name ls-frontend \
+  --backend-pool-name $LS_BE_POOL \
+  --protocol Tcp \
+  --frontend-port $PORT \
+  --backend-port $PORT \
+  --probe-name $LS_PROBE \
+  --idle-timeout 30 \
+  --enable-tcp-reset true
+```
+
+---
+
+# ===============================================================
+
+# **C. Asociar NICs de tus 2 VMs al Backend Pool del Load Balancer**
+
+# ===============================================================
+
+Obtén los NICs:
+
+```bash
+NIC1=$(az vm show -g $RG -n $VM1 --query "networkProfile.networkInterfaces[0].id" -o tsv)
+NIC2=$(az vm show -g $RG -n $VM2 --query "networkProfile.networkInterfaces[0].id" -o tsv)
+```
+
+Agregar ambos NICs:
+
+```bash
+az network nic ip-config address-pool add \
+  --address-pool $LS_BE_POOL \
+  --ip-config-name ipconfig1 \
+  --nic-name $(basename $NIC1) \
+  -g $RG \
+  --lb-name $LS_LB
+
+az network nic ip-config address-pool add \
+  --address-pool $LS_BE_POOL \
+  --ip-config-name ipconfig1 \
+  --nic-name $(basename $NIC2) \
+  -g $RG \
+  --lb-name $LS_LB
+```
+
+---
+
+# ===========================================================
+
+# **D. Instalar Logstash en ambos nodos (es-node-1 y es-node-2)**
+
+# ===========================================================
+
+En CloudShell obtén las IP públicas:
+
+```bash
+az vm list-ip-addresses -g $RG -o table
+```
+
+Accede a cada VM:
+
+```bash
+ssh elasticadmin@IP_PUBLICA_ES_NODE_1
+```
+
+### Instalar Logstash:
+
+```bash
+sudo apt update
+sudo apt install -y logstash
+```
+
+Repetir en `es-node-2`.
+
+---
+
+# ===========================================================
+
+# **E. Configurar el MISMO pipeline en los 2 nodos**
+
+# ===========================================================
+
+Pipeline: `/etc/logstash/conf.d/ha-lab.conf`
+
+En ambos nodos:
+
+```bash
+sudo nano /etc/logstash/conf.d/ha-lab.conf
+```
+
+Contenido:
+
+```conf
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  if "ERROR" in [message] {
+    mutate { add_field => { "log_level" => "ERROR" } }
+  } else {
+    mutate { add_field => { "log_level" => "INFO" } }
+  }
+}
+
+output {
+  stdout { codec => rubydebug }
+
+  elasticsearch {
+    hosts => ["http://10.10.1.4:9200", "http://10.10.1.5:9200"]
+    index => "logstash-ha-%{+YYYY.MM.dd}"
+  }
+}
+```
+
+Guardar y salir.
+
+---
+
+# ===================================================
+
+# **F. Validar configuración (en ambos nodos)**
+
+# ===================================================
+
+### 1. Verifica sintaxis:
+
+```bash
+sudo /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/ha-lab.conf -t
+```
+
+Debe decir:
+
+```
+Configuration OK
+```
+
+---
+
+# ===================================================
+
+# **G. Habilitar Logstash como servicio**
+
+# ===================================================
+
+```bash
+sudo systemctl enable logstash
+sudo systemctl restart logstash
+sudo systemctl status logstash
+```
+
+Repetir en los dos nodos.
+
+---
+
+# =========================================================
+
+# **H. Probar HA: Enviar tráfico al Load Balancer**
+
+# =========================================================
+
+Obtén IP del LB:
+
+```bash
+az network public-ip show \
+  -g $RG \
+  -n ${LS_LB}-pip \
+  --query "ipAddress" -o tsv
+```
+
+Supongamos que es:
+
+```
+20.X.X.X
+```
+
+### Prueba con nc:
+
+```bash
+nc 20.X.X.X 5044
+Hola desde Beat simulado
+```
+
+En ambos nodos se debe generar log:
+
+```
+{
+   "message":"Hola desde Beat simulado",
+   "log_level":"INFO",
+   "@timestamp":...
+}
+```
+
+---
+
+# =========================================================
+
+# **I. Validar que Elasticsearch recibe datos del HA**
+
+# =========================================================
+
+En cualquier nodo:
+
+```bash
+curl "http://localhost:9200/_cat/indices?v"
+```
+
+Debe aparecer:
+
+```
+logstash-ha-YYYY.MM.DD
+```
+
+Buscar documentos:
+
+```bash
+curl -X GET "localhost:9200/logstash-ha-*/_search?pretty&size=5"
+```
+
+---
+
+# =========================================================
+
+# **J. Prueba de FAILOVER (clave para Kyndryl)**
+
+# =========================================================
+
+Detén Logstash en es-node-1:
+
+```bash
+sudo systemctl stop logstash
+```
+
+Envía más tráfico al LB:
+
+```bash
+nc 20.X.X.X 5044
+Otro evento en HA
+```
+
+Verás que aún funciona y Logstash en es-node-2 procesa los eventos.
+
+Luego reinicia:
+
+```bash
+sudo systemctl start logstash
+```
+
+---
+
+# =========================================================
+
+# ✔ **RESULTADO FINAL**
+
+Haz configurado:
+
+* 2 nodos Logstash active-active
+* Load Balancer con health probe
+* Pipelines idénticos
+* Failover automático
+* Elasticsearch recibiendo eventos sin interrupción
+
+---
+
