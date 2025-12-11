@@ -1,0 +1,226 @@
+
+# ============================================
+
+# **PASO 1 – Instalar Filebeat en es-node-1**
+
+# ============================================
+
+Asumiendo que tu VM es **Ubuntu 20.04/22.04** (Azure estándar).
+
+Ejecuta:
+
+```bash
+curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+```
+
+Agregar repositorio:
+
+```bash
+sudo apt-get install apt-transport-https
+echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+```
+
+Instalar Filebeat:
+
+```bash
+sudo apt-get update
+sudo apt-get install filebeat -y
+```
+
+Habilitar servicio:
+
+```bash
+sudo systemctl enable filebeat
+sudo systemctl start filebeat
+sudo systemctl status filebeat
+```
+
+Debes ver **active (running)**.
+
+---
+
+# =================================================
+
+# **PASO 2 – Configurar Filebeat para leer /var/log/demo/app.log**
+
+# =================================================
+
+Abrimos la configuración principal:
+
+```bash
+sudo nano /etc/filebeat/filebeat.yml
+```
+
+Busca la sección:
+
+```yaml
+filebeat.inputs:
+```
+
+Y reemplázala por esto:
+
+```yaml
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/demo/app.log
+```
+
+IMPORTANTE:
+Quita los `- input_type` viejos si existen en esa sección.
+
+Guarda:
+`CTRL + O`, `ENTER`, luego `CTRL + X`.
+
+---
+
+# ============================================
+
+# **PASO 3 – Probar Filebeat con permisos incorrectos**
+
+# ============================================
+
+Recuerda que tú ya habías puesto:
+
+```bash
+sudo chmod 600 /var/log/demo/app.log
+```
+
+Esto significa:
+
+* Propietario: root
+* Permisos: **solo root puede leerlo**
+
+Como Filebeat corre como **usuario filebeat**, NO podrá leerlo.
+
+Reinicia Filebeat:
+
+```bash
+sudo systemctl restart filebeat
+```
+
+Ahora revisa logs:
+
+```bash
+sudo tail -n 50 /var/log/filebeat/filebeat
+```
+
+DEBERÍAS ver algo así:
+
+```
+ERR Failed to open /var/log/demo/app.log: permission denied
+ERR Harvester exited with error: failed to open file: permission denied
+```
+
+¡Este es el error real que querías ver!
+
+---
+
+# ============================================
+
+# **PASO 4 – Generar un evento en el archivo**
+
+# ============================================
+
+Como root:
+
+```bash
+echo "INFO Aplicación iniciada" | sudo tee -a /var/log/demo/app.log
+```
+
+Filebeat **seguirá sin poder leerlo**, reforzando el error de permisos.
+
+---
+
+# ============================================
+
+# **PASO 5 – Corregir permisos (solución real)**
+
+# ============================================
+
+Cambiamos propietario:
+
+```bash
+sudo chown filebeat:filebeat /var/log/demo/app.log
+```
+
+Damos permisos de lectura:
+
+```bash
+sudo chmod 644 /var/log/demo/app.log
+```
+
+Reiniciamos Filebeat:
+
+```bash
+sudo systemctl restart filebeat
+```
+
+Ver logs nuevamente:
+
+```bash
+sudo tail -n 50 /var/log/filebeat/filebeat
+```
+
+Ahora deberías ver:
+
+```
+INFO Harvester started for file: /var/log/demo/app.log
+```
+
+¡YA LEE EL ARCHIVO!
+
+---
+
+# ============================================
+
+# **PASO 6 – Ver logs llegando a Elasticsearch**
+
+# ============================================
+
+Filebeat por defecto envía a:
+
+`http://localhost:9200`
+índice: `filebeat-7.17.0-*`
+
+Comprueba:
+
+```bash
+curl "localhost:9200/_cat/indices?v"
+```
+
+Debe aparecer algo similar:
+
+```
+filebeat-7.17.0-2024.01.10
+```
+
+Buscar el evento:
+
+```bash
+curl "localhost:9200/filebeat-*/_search?pretty"
+```
+
+---
+
+# ============================================
+
+# **DEMO PERFECTA PARA TU CLASE**
+
+# ============================================
+
+1. Crear archivo con permisos incorrectos
+2. Filebeat falla → ERROR REAL en `/var/log/filebeat/filebeat`
+3. Corregir permisos
+4. Filebeat empieza a leer
+5. Evento llega a Elasticsearch
+6. Verlo en `/filebeat-*` o Kibana
+
+Esto demuestra:
+
+* integración real de ingestión
+* troubleshooting real de permisos
+* cómo validar logs
+* cómo Filebeat lee archivos y los envía al cluster distribuidor
+
