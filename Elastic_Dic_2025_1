@@ -137,7 +137,7 @@ az vm create \
 az network public-ip create \
   -g $RG \
   -n es-node-1-ip \
-  --sku Basic \
+  --sku standard \
   --allocation-method Static
 
 #VM 2 – Crear IP pública
@@ -145,7 +145,7 @@ az network public-ip create \
 az network public-ip create \
   -g $RG \
   -n es-node-2-ip \
-  --sku Basic \
+  --sku standard \
   --allocation-method Static
 
 
