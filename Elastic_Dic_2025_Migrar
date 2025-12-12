@@ -269,6 +269,10 @@ green
 
 Actualmente:
 
+Si ya agregaste el repo 8.x al instalar Elasticsearch 8.x:
+deb https://artifacts.elastic.co/packages/8.x/apt stable main
+
+Entonces no necesitas hacer nada extra, porque Elasticsearch y Kibana usan el mismo repositorio.
 * es-node-1 → Kibana 7.17
 * es-node-2 → **No tiene Kibana**
 * Queremos completar un HA real: dos instancias idénticas detrás del LB.
