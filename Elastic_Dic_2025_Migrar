@@ -405,4 +405,425 @@ curl -X POST "http://10.10.1.4:9200/_snapshot/backup_repo/preupgrade/_restore"
 sudo apt install elasticsearch=7.17.29
 sudo apt install kibana=7.17.29
 ```
+#################################################################################################################################
 
+Incluye:
+
+✔ Crear índices desde cero
+✔ Ingestar datos (logs, métricas y JSON personalizados)
+✔ Crear Data Views
+✔ Discover avanzado
+✔ Visualizaciones (Lens, TSVB, Metric, Pie, Bar, Heatmap)
+✔ Dashboards completos
+✔ Creación de usuarios + roles (seguridad nativa de ES 8)
+✔ Control de acceso por índice
+✔ Alertas nativas en Kibana
+✔ Exportación de dashboards
+✔ Bonus: laboratorio de KQL y filtros globales
+
+Todo **totalmente compatible con Kibana 8.15.x**.
+
+---
+
+# 🟦 LAB COMPLETO — KIBANA 8.x PARA OPERACIONES & SEGURIDAD
+
+---
+
+# 🟩 **1. Crear índice desde cero (via API)**
+
+Conéctate a cualquier nodo:
+
+```bash
+curl -X PUT "http://localhost:9200/app-logs" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "mappings": {
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "service":    { "type": "keyword" },
+        "status":     { "type": "integer" },
+        "message":    { "type": "text" }
+      }
+    }
+  }'
+```
+
+Verificar:
+
+```bash
+curl -X GET http://localhost:9200/_cat/indices?v
+```
+
+---
+
+# 🟩 **2. Insertar datos (logs simulados)**
+
+```bash
+curl -X POST "http://localhost:9200/app-logs/_bulk" \
+  -H 'Content-Type: application/json' \
+  -d '
+{"index":{}}
+{"@timestamp":"2025-01-01T12:00:00Z","service":"auth","status":200,"message":"Login success"}
+{"index":{}}
+{"@timestamp":"2025-01-01T12:01:00Z","service":"auth","status":401,"message":"Invalid password"}
+{"index":{}}
+{"@timestamp":"2025-01-01T12:02:00Z","service":"payments","status":500,"message":"DB timeout"}
+{"index":{}}
+{"@timestamp":"2025-01-01T12:03:00Z","service":"orders","status":200,"message":"Order created"}
+'
+```
+
+---
+
+# 🟩 **3. Crear Data View en Kibana**
+
+1. Entrar a kibana vía LB:
+
+```
+http://<LB-IP>:5601
+```
+
+2. Ir a:
+
+```
+Stack Management → Data Views → Create Data View
+```
+
+3. Crear:
+
+* Nombre: **app-logs**
+* Pattern: **app-logs***
+* Campo de tiempo: **@timestamp**
+
+Guardar.
+
+---
+
+# 🟩 **4. DISCOVER — análisis inicial**
+
+En Discover:
+
+1. Seleccionar el Data View `app-logs`
+2. Filtrar:
+
+```
+status >= 400
+```
+
+3. Campos útiles:
+
+* service
+* status
+* message
+* @timestamp
+
+4. Ordenar por timestamp
+5. Añadir columnas personalizadas
+6. Exportar resultados (CSV)
+
+---
+
+# 🟩 **5. VISUALIZACIONES — LENS**
+
+## 5.1. **Errores por minuto (Time Series)**
+
+Lens:
+
+* Drag @timestamp → Horizontal axis
+* Drag status → Vertical axis
+* Filtrar:
+
+```
+status >= 400
+```
+
+Cambiar tipo: **Area / Line**
+
+Guardar como:
+
+```
+Errores por minuto
+```
+
+---
+
+## 5.2. **Top servicios por volumen (Bar chart)**
+
+Lens:
+
+* Drag `service` → Horizontal axis
+* Drag `Records` → Vertical axis
+* Ordenar: Descending
+
+Guardar:
+
+```
+Top servicios por volumen
+```
+
+---
+
+## 5.3. **Distribución de códigos HTTP (Pie)**
+
+Lens:
+
+* Drag `status` → Slice
+* Drag `Records` → Size
+
+Guardar:
+
+```
+Distribución HTTP status
+```
+
+---
+
+## 5.4. **Latencia promedio (Metric visualization) — índice nuevo**
+
+Creamos índice para métricas:
+
+```bash
+curl -X PUT "http://localhost:9200/metrics-demo" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "mappings": {
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "service":    { "type": "keyword" },
+        "latency_ms": { "type": "float" }
+      }
+    }
+  }'
+```
+
+Insertar datos:
+
+```bash
+curl -X POST "http://localhost:9200/metrics-demo/_bulk" \
+  -H 'Content-Type: application/json' \
+  -d '
+{"index":{}}
+{"@timestamp":"2025-01-01T12:00:00Z","service":"auth","latency_ms":120}
+{"index":{}}
+{"@timestamp":"2025-01-01T12:00:00Z","service":"payments","latency_ms":450}
+'
+```
+
+Crear DataView: `metrics-demo*`
+
+Visualización tipo **metric**:
+
+* Metric: **Average latency_ms**
+* Breakdown by: service
+
+Guardar:
+
+```
+Latencia promedio por servicio
+```
+
+---
+
+# 🟩 **6. Dashboard completo**
+
+Crear dashboard:
+
+Nombre:
+
+```
+Observabilidad – Día 4 Kibana 8.x
+```
+
+Agregar:
+
+* Errores por minuto
+* Top servicios por volumen
+* Distribución de códigos HTTP
+* Latencia promedio por servicio
+
+Luego:
+
+✔ Ajustar layout
+✔ Filtros globales
+✔ Range time picker
+✔ Guardar dashboard
+
+---
+
+# 🟩 **7. Laboratorio de KQL para alumnos**
+
+En Discover o Dashboard → Add filter.
+
+1. Logs de un servicio:
+
+```
+service : "auth"
+```
+
+2. Errores:
+
+```
+status >= 400
+```
+
+3. Texto:
+
+```
+message : "timeout"
+```
+
+4. Expresión OR:
+
+```
+service : ("auth" or "payments")
+```
+
+5. Combinación:
+
+```
+service : "payments" and status >= 500
+```
+
+---
+
+# 🟩 **8. ACTIVAR SEGURIDAD EN ELASTICSEARCH 8 (opcional, recomendado para lab)**
+
+En ES 8.x la seguridad está activada por defecto cuando no la desactivas.
+
+Si tienes actualmente:
+
+```
+xpack.security.enabled: false
+```
+
+Puedes activar roles y usuarios:
+
+---
+
+## 8.1. Editar elasticsearch.yml en cada nodo
+
+Quitar/descomentar:
+
+```
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true
+```
+
+Reiniciar:
+
+```bash
+sudo systemctl restart elasticsearch
+```
+
+---
+
+## 8.2. Inicializar passwords de usuarios nativos
+
+```bash
+sudo /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
+```
+
+También puedes hacerlo para:
+
+```
+kibana_system
+logstash_system
+beats_system
+```
+
+---
+
+## 8.3. Configurar Kibana para autenticación
+
+En `/etc/kibana/kibana.yml`:
+
+```
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "<PASSWORD>"
+```
+
+Reiniciar Kibana:
+
+```bash
+sudo systemctl restart kibana
+```
+
+---
+
+# 🟩 **9. Crear usuarios y roles personalizados**
+
+En Kibana:
+
+```
+Stack Management → Security → Users
+```
+
+Ejemplo: usuario `analista1`
+
+Rol:
+
+* Permiso `read` sobre índices: `app-logs*`, `metrics-demo*`
+* Permiso `read` en Dashboard, Visualize, Discover
+* Sin permisos de gestión
+
+Crear usuario:
+
+```
+analista1 / Pass123!!
+```
+
+Probar login.
+
+---
+
+# 🟩 **10. Crear alertas nativas**
+
+En Kibana:
+
+```
+Observability → Alerts
+```
+
+Ejemplo: alerta cuando errores > 5 por minuto.
+
+Criterios:
+
+* Rule type: **Elasticsearch query**
+* Índice: app-logs
+* Query:
+
+```
+status >= 500
+```
+
+* Threshold: Document count > 3
+* Notify: email o log (simulado)
+
+---
+
+# 🟩 **11. Exportar dashboard (PDF o PNG)**
+
+En el dashboard:
+
+```
+Share → Generate PDF
+```
+
+Validar que exporta correctamente.
+
+---
+
+# 🟩 BONUS — LAB DE ANOMALÍAS (TSVB)
+
+Crea visualización TSVB:
+
+* Panel type: Time Series
+* Metric: Count()
+* Group by: service
+* Enable: Annotations (detect peaks)
+
+Guardar como:
+
+```
+Análisis de anomalías por servicio
+```
