@@ -1,33 +1,43 @@
-# GUÍA COMPLETA DE MIGRACIÓN
 
-## Elasticsearch 7.17.29 → Elasticsearch 8.x
 
-## Para entornos HA con 2 nodos (rolling upgrade)
+### 🟦 Cluster Elasticsearch
+
+| Nodo      | IP privada | Versión | Roles              | Kibana |
+| --------- | ---------- | ------- | ------------------ | ------ |
+| es-node-1 | 10.10.1.4  | 7.17.29 | master/data/ingest | **Sí** |
+| es-node-2 | 10.10.1.5  | 7.17.29 | master/data/ingest | No     |
+| es-node-3 | 10.10.1.6  | 7.17.29 | master/data/ingest | No     |
+
+### 🟦 Kibana HA (parcial)
+
+Actualmente **solo hay Kibana en es-node-1**, por lo tanto:
+
+* El Load Balancer **no aplica aún**
+* Debemos instalar Kibana en **es-node-2** luego del upgrade
+* Luego reconstruimos correctamente el HA con las claves de encripción
+
+### 🟦 Índices
+
+Todos tus índices tienen:
+
+```
+pri: 1
+rep: 1
+```
+
+Excelente: **esto permite rolling upgrade real sin pérdida de datos.**
+
+### 🟦 Versión destino
+
+**Elasticsearch / Kibana 8.15.0 (estable y recomendada)**
 
 ---
 
-# 0. CONTEXTO TÉCNICO DE TU ENTORNO
+# 🟥 **PARTE 1 – Preparación y snapshot (obligatorio)**
 
-Confirmado:
+## 1.1. Verificar estado real del cluster
 
-* Elasticsearch 7.17.29
-* Kibana 7.17.29
-* 2 nodos en cluster (es-node-1 y es-node-2)
-* `xpack.security.enabled: false`
-* Indices como logs-demo, products-advanced, etc.
-* Todo funcionando en estado **green**
-
-**Perfecto para migrar.**
-
----
-
-# 1. PREPARACIÓN (OBLIGATORIO)
-
-Antes de tocar nada:
-
-## 1.1. Verifica estado del cluster
-
-En cualquiera de los nodos:
+En es-node-1:
 
 ```bash
 curl -s http://localhost:9200/_cluster/health?pretty
@@ -35,41 +45,30 @@ curl -s http://localhost:9200/_cat/nodes?v
 curl -s http://localhost:9200/_cat/indices?v
 ```
 
-El cluster debe estar:
+Debes ver:
 
 ```
 status: "green"
-number_of_nodes: 2
+number_of_nodes: 3
 ```
 
-Si no está green, NO migres.
-
 ---
 
-## 1.2. Revisa Breaking Changes desde Kibana
+## 1.2. Crear un repositorio de snapshots en los tres nodos
 
-Ruta:
+### 1) Crear carpeta física
 
-**Stack Management → Upgrade Assistant**
-
-Debes asegurarte de que:
-
-* No hay índices corruptos
-* No hay plugins incompatibles (en tu caso no usas plugins externos)
-* No hay mensajes severos
-
-En un cluster simple como el tuyo, el Upgrade Assistant normalmente aparece limpio.
-
----
-
-## 1.3. Crear Snapshot (muy importante)
-
-Esto te garantiza rollback si algo falla.
-
-Primero define un repositorio (si no existe):
+Ejecuta esto en **es-node-1, es-node-2 y es-node-3**:
 
 ```bash
-curl -X PUT "http://localhost:9200/_snapshot/backup_repo" -H 'Content-Type: application/json' -d '
+sudo mkdir -p /var/lib/elasticsearch/backups
+sudo chown -R elasticsearch:elasticsearch /var/lib/elasticsearch/backups
+```
+
+### 2) Registrar repositorio:
+
+```bash
+curl -X PUT "http://10.10.1.4:9200/_snapshot/backup_repo" -H "Content-Type: application/json" -d '
 {
   "type": "fs",
   "settings": {
@@ -78,148 +77,53 @@ curl -X PUT "http://localhost:9200/_snapshot/backup_repo" -H 'Content-Type: appl
 }'
 ```
 
-Crea carpeta en ambos nodos:
+### 3) Crear snapshot completo
 
 ```bash
-sudo mkdir -p /var/lib/elasticsearch/backups
-sudo chown -R elasticsearch:elasticsearch /var/lib/elasticsearch/backups
+curl -X PUT "http://10.10.1.4:9200/_snapshot/backup_repo/preupgrade?wait_for_completion=true"
 ```
 
-Crear snapshot:
+Debe devolver:
 
-```bash
-curl -X PUT "http://localhost:9200/_snapshot/backup_repo/preupgrade_snapshot?wait_for_completion=true"
 ```
-
-Debes ver “SUCCESS”.
-
----
-
-# 2. ROLLING UPGRADE (Migración nodo por nodo)
-
-La clave para **NO perder datos** es:
-
-* Nunca detener ambos nodos a la vez
-* Crear snapshot
-* Asegurar estado green antes de avanzar
-
-Usaremos este orden:
-
-1. es-node-1
-2. es-node-2
-3. Kibana
-4. Validación final
-
----
-
-# 3. ACTUALIZAR NODO 1 (es-node-1)
-
-## 3.1. Asegura que shards tengan réplica actualizada
-
-Fuerza una reasignación suave:
-
-```bash
-curl -X POST "http://localhost:9200/_cluster/reroute?retry_failed"
+"state": "SUCCESS"
 ```
 
 ---
 
-## 3.2. Detener Elasticsearch en nodo 1
+# 🟦 ¿Qué logramos hasta aquí?
 
-```bash
-sudo systemctl stop elasticsearch
-```
-
-Confirma que está detenido:
-
-```bash
-sudo systemctl status elasticsearch
-```
+✔ Tienes respaldo completo
+✔ Puedes restaurar si falla algo
+✔ Índices con réplica → seguro hacer rolling upgrade
+✔ Listo para migración
 
 ---
 
-## 3.3. Instalar Elasticsearch 8.x
+# 🟥 **PARTE 2 – Rolling Upgrade de Elasticsearch 7.17 → 8.15 (3 nodos)**
 
-Primero actualiza repos:
+Regla de oro:
 
-```bash
-sudo apt-get update
-```
+**Nunca parar más de un nodo a la vez.**
 
-Luego instala la versión 8.15.x (ejemplo estable):
+El orden recomendado según Elastic es:
 
-```bash
-sudo apt-get install elasticsearch=8.15.0
-```
+1. Nodos data/ingest
+2. Nodos master elegidos
+3. Supervisar cluster
+4. Repetir
 
-Si tu distro usa yum:
+Como tus nodos cumplen todos los roles, lo hacemos así:
 
-```bash
-sudo yum install elasticsearch-8.15.0
-```
-
----
-
-## 3.4. Ajustar elasticsearch.yml
-
-Elastic 8.x activa seguridad automáticamente; como tú no la usas todavía, agrega:
-
-En `/etc/elasticsearch/elasticsearch.yml`:
-
-```
-xpack.security.enabled: false
-xpack.security.transport.ssl.enabled: false
-```
-
-NO borres otras líneas.
+➡ Primero **es-node-1**
+➡ Luego **es-node-2**
+➡ Último **es-node-3**
 
 ---
 
-## 3.5. Iniciar Elasticsearch 8 en nodo 1
+# 🟩 **NODO 1 — es-node-1 (10.10.1.4)**
 
-```bash
-sudo systemctl start elasticsearch
-```
-
-Validar que subió:
-
-```bash
-curl -s http://localhost:9200/
-```
-
-Debes ver:
-
-```
-"number" : "8.15.0",
-"cluster_name" : "your-cluster",
-```
-
----
-
-## 3.6. Esperar a que el cluster vuelva a green
-
-En cualquiera de los nodos:
-
-```bash
-curl -s http://localhost:9200/_cluster/health?pretty
-```
-
-Debe pasar por:
-
-* yellow
-* luego green
-
-**NO pases al nodo 2 hasta que esté green.**
-
----
-
-# 4. ACTUALIZAR NODO 2 (es-node-2)
-
-Mismo proceso:
-
----
-
-## 4.1. Detén Elasticsearch
+## 2.1. Parar servicio
 
 ```bash
 sudo systemctl stop elasticsearch
@@ -227,25 +131,51 @@ sudo systemctl stop elasticsearch
 
 ---
 
-## 4.2. Instala Elasticsearch 8.x
+## 2.2. Instalar Elasticsearch 8.15.0
 
 ```bash
-sudo apt-get update
-sudo apt-get install elasticsearch=8.15.0
+sudo apt update
+sudo apt install elasticsearch=8.15.0
+```
+
+Si el repo no tiene pinning, instalar última 8.x:
+
+```bash
+sudo apt install elasticsearch
 ```
 
 ---
 
-## 4.3. Ajustar elasticsearch.yml
+## 2.3. Ajustar elasticsearch.yml
 
+Abre el archivo:
+
+```bash
+sudo nano /etc/elasticsearch/elasticsearch.yml
 ```
+
+Reemplaza/asegura:
+
+```yaml
+cluster.name: kyndryl-elk-lab
+
+node.name: es-node-1
+node.roles: [ master, data, ingest ]
+
+network.host: 0.0.0.0
+http.port: 9200
+
+discovery.seed_hosts: ["10.10.1.4","10.10.1.5","10.10.1.6"]
+
+cluster.initial_master_nodes: ["es-node-1","es-node-2","es-node-3"]
+
 xpack.security.enabled: false
 xpack.security.transport.ssl.enabled: false
 ```
 
 ---
 
-## 4.4. Inicia Elasticsearch
+## 2.4. Iniciar servicio
 
 ```bash
 sudo systemctl start elasticsearch
@@ -253,149 +183,213 @@ sudo systemctl start elasticsearch
 
 ---
 
-## 4.5. Validar cluster green
+## 2.5. Verifica nodo actualizado
 
 ```bash
-curl -s http://localhost:9200/_cluster/health?pretty
-```
-
-Debes ver:
-
-```
-status: "green"
-number_of_nodes: 2
-```
-
----
-
-# 5. MIGRAR KIBANA 7.17 → 8.x
-
-Sin Kibana, el cluster no sirve para tus alumnos, así que este paso es crucial.
-
----
-
-## 5.1. Detener Kibana
-
-```bash
-sudo systemctl stop kibana
-```
-
----
-
-## 5.2. Instalar Kibana 8.x
-
-```bash
-sudo apt-get install kibana=8.15.0
-```
-
----
-
-## 5.3. Ajustar kibana.yml
-
-En `/etc/kibana/kibana.yml`:
-
-```
-elasticsearch.hosts: ["http://<IP-node-1>:9200","http://<IP-node-2>:9200"]
-elasticsearch.ssl.verificationMode: none
-```
-
-Si quieres mantener seguridad desactivada:
-
-```
-xpack.security.enabled: false
-```
-
----
-
-## 5.4. Iniciar Kibana
-
-```bash
-sudo systemctl start kibana
-```
-
-Ir al navegador:
-
-```
-http://<IP>:5601
-```
-
-Kibana 8.x ya debería cargar.
-
----
-
-# 6. POST-UPGRADE (validaciones finales)
-
-## 6.1. Ver nodes
-
-```
-GET _cat/nodes?v
+curl -s http://10.10.1.4:9200/
 ```
 
 Debe mostrar:
 
 ```
-8.15.0
-8.15.0
+"number" : "8.15.0"
 ```
 
 ---
 
-## 6.2. Ver índices
-
-```
-GET _cat/indices?v
-```
-
-No debe haber índices rojos.
-
----
-
-## 6.3. Ver shards
-
-```
-GET _cat/shards?v
-```
-
----
-
-## 6.4. Kibana
-
-Confirmar:
-
-* Discover carga
-* Visualize funciona
-* Index Management funciona
-* No hay errores de consola
-
----
-
-# 7. ¿CUÁNTO TIEMPO TOMA?
-
-Para un cluster de 2 nodos como el tuyo:
-
-* Nodo 1: 5–10 min
-* Nodo 2: 5–10 min
-* Kibana: 3–5 min
-
-Tiempo total: **20–30 minutos** si sigues la guía sin interrupciones.
-
----
-
-# 8. SI PASA ALGO: ROLLBACK
-
-Tienes 2 formas:
-
-## Opción A: Restaurar snapshot (ideal)
-
-```
-POST _snapshot/backup_repo/preupgrade_snapshot/_restore
-```
-
-## Opción B: Volver a instalar ES/Kibana 7.17
+## 2.6. Verifica cluster green
 
 ```bash
-sudo apt-get install elasticsearch=7.17.29
-sudo apt-get install kibana=7.17.29
+curl -s http://10.10.1.4:9200/_cluster/health?pretty
+```
+
+Debe quedar:
+
+```
+status: "green"
+number_of_nodes: 3
+```
+
+**No avances a nodo 2 hasta que el cluster esté green.**
+
+---
+
+# 🟩 **NODO 2 — es-node-2 (10.10.1.5)**
+
+**Mismos pasos exactos:**
+
+1. Stop servicio
+2. Instalar ES 8.15.0
+3. Editar elasticsearch.yml
+4. Start
+5. Verificar health green
+
+---
+
+# 🟩 **NODO 3 — es-node-3 (10.10.1.6)**
+
+Mismos pasos.
+
+---
+
+# 🟩 **Resultado esperado del cluster**
+
+Ejecutar:
+
+```bash
+curl -s http://10.10.1.4:9200/_cat/nodes?v
+```
+
+Debe mostrar algo como:
+
+```
+es-node-1 8.15.0
+es-node-2 8.15.0
+es-node-3 8.15.0
+```
+
+Y health:
+
+```
+green
 ```
 
 ---
+
+# 🟥 PARTE 3 – Kibana HA + Upgrade 7.17 → 8.15
+
+Actualmente:
+
+* es-node-1 → Kibana 7.17
+* es-node-2 → **No tiene Kibana**
+* Queremos completar un HA real: dos instancias idénticas detrás del LB.
+
+---
+
+# 🟩 Paso 3.1 — Actualizar Kibana en es-node-1
+
+```bash
+sudo systemctl stop kibana
+sudo apt update
+sudo apt install kibana=8.15.0
+```
+
+---
+
+# 🟩 Paso 3.2 — Instalar Kibana desde cero en es-node-2
+
+```bash
+sudo apt update
+sudo apt install kibana=8.15.0
+```
+
+---
+
+# 🟩 Paso 3.3 — Configurar HA con claves idénticas
+
+En **ambos nodos**:
+
+```bash
+sudo nano /etc/kibana/kibana.yml
+```
+
+Configura:
+
+```yaml
+server.host: "0.0.0.0"
+server.port: 5601
+
+elasticsearch.hosts: ["http://10.10.1.4:9200","http://10.10.1.5:9200","http://10.10.1.6:9200"]
+
+xpack.security.enabled: false
+
+xpack.encryptedSavedObjects.encryptionKey: "SuperClaveLargaDe32CaracteresMinimo123"
+xpack.reporting.encryptionKey: "OtraClaveLargaDe32CaracteresMinimo456"
+xpack.security.encryptionKey: "ClaveDiferenteLargaDe32CaracteresMinimo789"
+```
+
+**IMPORTANTE:**
+Las **3 claves deben ser EXACTAMENTE iguales** en todos los Kibana.
+
+---
+
+# 🟩 Paso 3.4 — Iniciar Kibana en ambos nodos
+
+```bash
+sudo systemctl enable kibana
+sudo systemctl restart kibana
+sudo systemctl status kibana
+```
+
+Debe quedar ambos:
+
+```
+active (running)
+```
+
+---
+
+# 🟩 Paso 3.5 — Validar HA con Load Balancer
+
+En tu navegador:
+
+```
+http://<IP-publica-del-LB>:5601
+```
+
+Deberás ver:
+
+* Kibana 8.x
+* Sin errores
+* Todos los dashboards siguen funcionando
+
+Luego prueba failover:
+
+### Apaga Kibana del nodo 1:
+
+```bash
+sudo systemctl stop kibana
+```
+
+Refresca Kibana vía LB → debe seguir funcionando (nodo 2 responde).
+
+---
+
+# 🟥 PARTE 4 — Validaciones finales
+
+Ejecuta:
+
+```bash
+curl -s http://10.10.1.4:9200/_cluster/health?pretty
+curl -s http://10.10.1.4:9200/_cat/indices?v
+curl -s http://10.10.1.4:9200/_cat/nodes?v
+```
+
+En Kibana:
+
+* Discover
+* Visualizations
+* Dashboard
+* Lens
+* TSVB
+* Reporting PDF
+
+Todo debe funcionar mejor que antes.
+
+---
+
+# 🟩 PARTE 5 — Rollback si algo fallara
+
+## Restaurar snapshot:
+
+```bash
+curl -X POST "http://10.10.1.4:9200/_snapshot/backup_repo/preupgrade/_restore"
+```
+
+## Downgrade:
+
+```bash
+sudo apt install elasticsearch=7.17.29
+sudo apt install kibana=7.17.29
+```
+
